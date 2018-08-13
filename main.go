@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"gitee.com/Bpazy/ssManager/user"
+	"github.com/Bpazy/ssManager/user"
 	"github.com/gin-gonic/gin"
 	"io/ioutil"
 	"log"
