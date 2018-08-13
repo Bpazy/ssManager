@@ -16,7 +16,7 @@ type SsConfig struct {
 	LocalPort    int               `json:"local_port"`
 	Timeout      int               `json:"timeout"`
 	Method       string            `json:"method"`
-	FastOpen     string            `json:"fast_open"`
+	FastOpen     bool              `json:"fast_open"`
 	PortPassword map[string]string `json:"port_password"`
 }
 
