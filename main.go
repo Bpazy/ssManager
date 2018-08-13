@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/gin-gonic/gin"
 	"io/ioutil"
 	"log"
 	"os"
@@ -19,13 +20,45 @@ type SsConfig struct {
 	PortPassword map[string]string `json:"port_password"`
 }
 
+const ok = 200
+const failed = 500
+
 func main() {
-	fileBytes, e := ioutil.ReadFile("./test.json")
-	if e != nil {
-		log.Fatal(e)
+	r := gin.Default()
+	r.GET("/findConfig", func(c *gin.Context) {
+		ssConfig, err := findConfig()
+		if err != nil {
+			c.JSON(failed, err)
+			return
+		}
+		c.JSON(ok, ssConfig)
+	})
+	r.Run()
+}
+
+func findConfig() (*SsConfig, error) {
+	fileBytes, err := ioutil.ReadFile("./test.json")
+	if err != nil {
+		return nil, err
 	}
 	ssConfig := SsConfig{}
-	json.Unmarshal(fileBytes, &ssConfig)
+	err = json.Unmarshal(fileBytes, &ssConfig)
+	if err != nil {
+		return nil, err
+	}
+	return &ssConfig, nil
+}
+
+func test() {
+	fileBytes, err := ioutil.ReadFile("./test.json")
+	if err != nil {
+		log.Fatal(err)
+	}
+	ssConfig := SsConfig{}
+	err = json.Unmarshal(fileBytes, &ssConfig)
+	if err != nil {
+		log.Fatal(err)
+	}
 	fmt.Println(ssConfig)
 
 	ssConfig.PortPassword["9999"] = "hahaha"
