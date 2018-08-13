@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"gitee.com/Bpazy/ssManager/user"
 	"github.com/gin-gonic/gin"
 	"io/ioutil"
 	"log"
+	"net/http"
 	"os"
 )
 
@@ -20,12 +22,20 @@ type SsConfig struct {
 	PortPassword map[string]string `json:"port_password"`
 }
 
-const ok = 200
-const failed = 500
+const ok = http.StatusOK
+const failed = http.StatusInternalServerError
 
 func main() {
-	r := gin.Default()
-	r.GET("/findConfig", func(c *gin.Context) {
+	engine := gin.Default()
+	engine.Use(user.Auth(user.DefaultLoginUrl))
+
+	engine.GET("/", func(c *gin.Context) {
+		c.JSON(ok, "OK")
+	})
+
+	engine.GET(user.DefaultLoginUrl, user.Login())
+
+	engine.GET("/findConfig", func(c *gin.Context) {
 		ssConfig, err := findConfig()
 		if err != nil {
 			c.JSON(failed, err)
@@ -33,7 +43,7 @@ func main() {
 		}
 		c.JSON(ok, ssConfig)
 	})
-	r.Run()
+	engine.Run()
 }
 
 func findConfig() (*SsConfig, error) {
