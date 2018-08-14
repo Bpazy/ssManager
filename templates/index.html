@@ -1,0 +1,22 @@
+<html>
+<head>
+    <title>
+        Shadowsocks Manager
+    </title>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.5.17/dist/vue.js"></script>
+    <script src="https://unpkg.com/vue-router@2.0.0/dist/vue-router.js"></script>
+    <link type="text/css" rel="styleSheet"  href="/assets/index.css" />
+</head>
+<body>
+<div id="app">
+    <div class="leftSideBar">
+        <div>首页</div>
+        <div>端口密码</div>
+    </div>
+    <div class="mainWindow">
+        <router-view></router-view>
+    </div>
+</div>
+</body>
+<script src="/assets/index.js"></script>
+</html>

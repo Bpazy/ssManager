@@ -11,17 +11,23 @@ const failed = http.StatusInternalServerError
 
 func main() {
 	engine := gin.Default()
+
 	engine.Use(user.DefaultAuth())
 	engine.Any(user.DefaultLoginUrl, user.Login())
 
+	engine.LoadHTMLGlob("templates/*")
+	engine.Static("/assets", "./assets")
 	engine.Any("/", defaultHandler)
+
 	engine.Any("/findSsConfig", findConfigHandler)
 	engine.Any("/addPortPassword", addPortPasswordHandler)
 	engine.Run(config.Addr)
 }
 
 func defaultHandler(c *gin.Context) {
-	c.JSON(ok, "OK")
+	c.HTML(200, "index.html", gin.H{
+		"title": "tttt",
+	})
 }
 
 func addPortPasswordHandler(c *gin.Context) {
