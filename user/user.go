@@ -24,6 +24,10 @@ func Login() gin.HandlerFunc {
 	}
 }
 
+func DefaultAuth() gin.HandlerFunc {
+	return Auth(DefaultLoginUrl)
+}
+
 func Auth(loginUrl string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if c.Request.URL.Path == loginUrl {
