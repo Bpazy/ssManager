@@ -26,6 +26,7 @@ func main() {
 	engine.Any("/usage", usage)
 	engine.Run(config.Addr)
 }
+
 func usage(c *gin.Context) {
 	port, ok := c.GetQuery("port")
 	if !ok {
