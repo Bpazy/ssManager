@@ -49,7 +49,7 @@ func usage(c *gin.Context) {
 		c.JSON(statusFailed, err)
 		return
 	}
-	c.JSON(statusOk, string(opBytes))
+	c.JSON(statusOk, strings.TrimSpace(string(opBytes)))
 }
 
 func defaultHandler(c *gin.Context) {
