@@ -1,4 +1,4 @@
-#!/usr/bin/bash
+#!/usr/bash
 git pull
 go build -o ssManager .
 ./ssManager
