@@ -1,13 +1,18 @@
 package main
 
 import (
+	"flag"
 	"github.com/Bpazy/ssManager/util"
 	"github.com/jmoiron/sqlx"
 	"strings"
 )
 
 func init() {
-	db2, err := sqlx.Open("sqlite3", "dev.db")
+	dbPath = flag.String("dbPath", "temp.db", "sqlite数据库文件路径")
+	port = flag.String("port", ":8082", "server port")
+	flag.Parse()
+
+	db2, err := sqlx.Open("sqlite3", *dbPath)
 	util.ShouldPanic(err)
 	db = db2
 

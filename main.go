@@ -14,7 +14,9 @@ const (
 )
 
 var (
-	db *sqlx.DB
+	db     *sqlx.DB
+	port   *string
+	dbPath *string
 )
 
 func main() {
@@ -24,7 +26,7 @@ func main() {
 		group.GET("/list", listHandler())
 		group.POST("/save", saveHandler())
 	}
-	r.Run(":8082")
+	r.Run(*port)
 }
 
 func saveHandler() gin.HandlerFunc {
