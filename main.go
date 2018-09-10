@@ -10,7 +10,6 @@ import (
 )
 
 const (
-	usage         = "iptables -L -nvx | grep spt:{} | awk '{print $2}'"
 	tableInitPath = "res/init_{}.sql"
 )
 
@@ -25,7 +24,7 @@ func main() {
 		group.GET("/list", listHandler())
 		group.POST("/save", saveHandler())
 	}
-	r.Run(":7777")
+	r.Run(":8082")
 }
 
 func saveHandler() gin.HandlerFunc {
@@ -34,7 +33,11 @@ func saveHandler() gin.HandlerFunc {
 		if ok := util.BindJson(c, &p); !ok {
 			return
 		}
-		SavePort(&p)
+		ok := SavePort(&p)
+		if !ok {
+			c.JSON(http.StatusOK, result.Fail("save failed", &p))
+		}
+		SaveIptables(p.Port)
 		c.JSON(http.StatusOK, result.Ok("save success", &p))
 	}
 }

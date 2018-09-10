@@ -2,7 +2,7 @@ package result
 
 const (
 	statusOk   = "Ok"
-	statusFail = "Fail"
+	statusFail = "Failed"
 )
 
 type Result struct {
@@ -14,6 +14,14 @@ type Result struct {
 func Ok(msg string, data interface{}) *Result {
 	r := Result{}
 	r.Code = statusOk
+	r.Msg = msg
+	r.Data = data
+	return &r
+}
+
+func Fail(msg string, data interface{}) *Result {
+	r := Result{}
+	r.Code = statusFail
 	r.Msg = msg
 	r.Data = data
 	return &r

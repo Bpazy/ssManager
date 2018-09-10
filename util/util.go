@@ -12,10 +12,12 @@ func ShouldPanic(err error) {
 	}
 }
 
-func MustParseInt(i string) int {
-	atoi, e := strconv.Atoi(i)
-	ShouldPanic(e)
-	return atoi
+func ShouldParseInt64(i string) (int64, bool) {
+	atoi, err := strconv.ParseInt(i, 10, 64)
+	if err != nil {
+		return 0, false
+	}
+	return atoi, true
 }
 
 func BindJson(c *gin.Context, target interface{}) bool {
