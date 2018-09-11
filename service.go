@@ -50,7 +50,7 @@ func getUsage(port int) int64 {
 	if runtime.GOOS == "windows" {
 		return -1
 	}
-	i, ok := util.ShouldParseInt64(RunCommand(strings.Replace(iptablesUsage, "{}", strconv.Itoa(port), -1)))
+	i, ok := util.ShouldParseInt64(MustRunCommand(strings.Replace(iptablesUsage, "{}", strconv.Itoa(port), -1)))
 	if !ok {
 		return 0
 	}
@@ -78,20 +78,25 @@ func SaveIptables(port int) {
 		return
 	}
 
-	RunCommand(strings.Replace(iptablesInputAdd, "{}", strconv.Itoa(port), -1))
-	RunCommand(strings.Replace(iptablesOutputAdd, "{}", strconv.Itoa(port), -1))
+	MustRunCommand(strings.Replace(iptablesInputAdd, "{}", strconv.Itoa(port), -1))
+	MustRunCommand(strings.Replace(iptablesOutputAdd, "{}", strconv.Itoa(port), -1))
 }
 
-func RunCommand(c string) string {
+func MustRunCommand(c string) string {
+	result, err := RunCommand(c)
+	util.ShouldPanic(err)
+	return result
+}
+
+func RunCommand(c string) (string, error) {
 	log.Println("command prepare: " + c)
 	cmd := exec.Command("bash", "-c", c)
 	var out bytes.Buffer
 	cmd.Stdout = &out
 
 	err := cmd.Run()
-	util.ShouldPanic(err)
 
 	result := strings.TrimSpace(out.String())
 	log.Println("command result: " + result)
-	return result
+	return result, err
 }
