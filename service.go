@@ -18,6 +18,20 @@ const (
 	iptablesOutputDel = "iptables -D OUTPUT -p tcp --sport {}"
 )
 
+type PortSorter []Port
+
+func (p PortSorter) Len() int {
+	return len(p)
+}
+
+func (p PortSorter) Less(i, j int) bool {
+	return p[i].Usage < p[j].Usage
+}
+
+func (p PortSorter) Swap(i, j int) {
+	p[i], p[j] = p[j], p[i]
+}
+
 type Port struct {
 	Port  int    `json:"port"`
 	Alias string `json:"alias"`

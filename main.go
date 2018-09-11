@@ -7,6 +7,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
 	"net/http"
+	"sort"
 )
 
 const (
@@ -64,6 +65,8 @@ func saveHandler() gin.HandlerFunc {
 func listHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		portStructs := QueryPorts()
+		sort.Sort(PortSorter(portStructs))
+
 		c.JSON(http.StatusOK, portStructs)
 	}
 }
