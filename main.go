@@ -21,12 +21,29 @@ var (
 
 func main() {
 	r := gin.Default()
+	r.Use(errorMiddleware())
 	group := r.Group("/api")
 	{
 		group.GET("/list", listHandler())
 		group.POST("/save", saveHandler())
+		group.GET("/delete/:port", deleteHandler())
 	}
 	r.Run(*port)
+}
+func errorMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Next()
+		if len(c.Errors) > 0 {
+			panic(c.Errors)
+		}
+	}
+}
+func deleteHandler() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		port := c.Param("port")
+		DeletePort(port)
+		c.JSON(http.StatusOK, result.Ok("删除成功", ""))
+	}
 }
 
 func saveHandler() gin.HandlerFunc {

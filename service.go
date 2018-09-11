@@ -11,9 +11,11 @@ import (
 )
 
 const (
-	iptablesUsage  = "iptables -L -nvx | grep spt:{} | awk '{print $2}'"
-	iptablesInput  = "iptables -A INPUT -p tcp --dport {}"
-	iptablesOutput = "iptables -A OUTPUT -p tcp --sport {}"
+	iptablesUsage     = "iptables -L -nvx | grep spt:{} | awk '{print $2}'"
+	iptablesInputAdd  = "iptables -A INPUT -p tcp --dport {}"
+	iptablesInputDel  = "iptables -D INPUT -p tcp --dport {}"
+	iptablesOutputAdd = "iptables -A OUTPUT -p tcp --sport {}"
+	iptablesOutputDel = "iptables -D OUTPUT -p tcp --sport {}"
 )
 
 type Port struct {
@@ -55,6 +57,14 @@ func getUsage(port int) int64 {
 	return i
 }
 
+func DeletePort(port string) {
+	RunCommand(strings.Replace(iptablesInputDel, "{}", port, -1))
+	RunCommand(strings.Replace(iptablesOutputDel, "{}", port, -1))
+
+	_, err := db.Exec("delete from s_ports where port = ?", port)
+	util.ShouldPanic(err)
+}
+
 func SavePort(p *Port) bool {
 	_, err := db.NamedExec("insert into s_ports (port, alias) values (:port, :alias)", p)
 	if err != nil {
@@ -68,8 +78,8 @@ func SaveIptables(port int) {
 		return
 	}
 
-	RunCommand(strings.Replace(iptablesInput, "{}", strconv.Itoa(port), -1))
-	RunCommand(strings.Replace(iptablesOutput, "{}", strconv.Itoa(port), -1))
+	RunCommand(strings.Replace(iptablesInputAdd, "{}", strconv.Itoa(port), -1))
+	RunCommand(strings.Replace(iptablesOutputAdd, "{}", strconv.Itoa(port), -1))
 }
 
 func RunCommand(c string) string {
