@@ -35,6 +35,9 @@ func QueryPorts() []Port {
 
 	for i := range ports {
 		p := &ports[i]
+		if p.Alias == "" {
+			p.Alias = "未配置"
+		}
 		usage := getUsage(p.Port)
 		p.Usage = usage
 	}
