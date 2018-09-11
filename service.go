@@ -23,7 +23,7 @@ type Port struct {
 }
 
 func QueryPorts() []Port {
-	rows, err := db.Queryx("select * from s_ports;")
+	rows, err := db.Queryx("select * from s_ports order by port;")
 	util.ShouldPanic(err)
 	defer rows.Close()
 	ports := make([]Port, 0)
