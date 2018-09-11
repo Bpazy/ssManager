@@ -65,7 +65,7 @@ func saveHandler() gin.HandlerFunc {
 func listHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		portStructs := QueryPorts()
-		sort.Sort(PortSorter(portStructs))
+		sort.Sort(sort.Reverse(PortSorter(portStructs)))
 
 		c.JSON(http.StatusOK, portStructs)
 	}
