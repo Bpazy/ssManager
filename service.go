@@ -1,21 +1,8 @@
 package main
 
 import (
-	"bytes"
+	"github.com/Bpazy/ssManager/iptables"
 	"github.com/Bpazy/ssManager/util"
-	"log"
-	"os/exec"
-	"runtime"
-	"strconv"
-	"strings"
-)
-
-const (
-	iptablesUsage     = "iptables -L -nvx | grep spt:{} | awk '{print $2}'"
-	iptablesInputAdd  = "iptables -A INPUT -p tcp --dport {}"
-	iptablesInputDel  = "iptables -D INPUT -p tcp --dport {}"
-	iptablesOutputAdd = "iptables -A OUTPUT -p tcp --sport {}"
-	iptablesOutputDel = "iptables -D OUTPUT -p tcp --sport {}"
 )
 
 type PortSorter []Port
@@ -54,26 +41,14 @@ func QueryPorts() []Port {
 		if p.Alias == "" {
 			p.Alias = "未配置"
 		}
-		usage := getUsage(p.Port)
+		usage := iptables.GetUsage(p.Port)
 		p.Usage = usage
 	}
 	return ports
 }
 
-func getUsage(port int) int64 {
-	if runtime.GOOS == "windows" {
-		return -1
-	}
-	i, ok := util.ShouldParseInt64(MustRunCommand(strings.Replace(iptablesUsage, "{}", strconv.Itoa(port), -1)))
-	if !ok {
-		return 0
-	}
-	return i
-}
-
-func DeletePort(port string) {
-	RunCommand(strings.Replace(iptablesInputDel, "{}", port, -1))
-	RunCommand(strings.Replace(iptablesOutputDel, "{}", port, -1))
+func DeletePort(port int) {
+	iptables.DeleteIptables(port)
 
 	_, err := db.Exec("delete from s_ports where port = ?", port)
 	util.ShouldPanic(err)
@@ -87,30 +62,15 @@ func SavePort(p *Port) bool {
 	return true
 }
 
-func SaveIptables(port int) {
-	if runtime.GOOS == "windows" {
-		return
+func EditPort(p *Port) bool {
+	_, err := db.NamedExec("update s_ports set alias = :alias where port = :port", p)
+	if err != nil {
+		return false
 	}
-
-	MustRunCommand(strings.Replace(iptablesInputAdd, "{}", strconv.Itoa(port), -1))
-	MustRunCommand(strings.Replace(iptablesOutputAdd, "{}", strconv.Itoa(port), -1))
+	return true
 }
 
-func MustRunCommand(c string) string {
-	result, err := RunCommand(c)
-	util.ShouldPanic(err)
-	return result
-}
-
-func RunCommand(c string) (string, error) {
-	log.Println("command prepare: " + c)
-	cmd := exec.Command("bash", "-c", c)
-	var out bytes.Buffer
-	cmd.Stdout = &out
-
-	err := cmd.Run()
-
-	result := strings.TrimSpace(out.String())
-	log.Println("command result: " + result)
-	return result, err
+func ResetPortUsage(port int) {
+	iptables.DeleteIptables(port)
+	iptables.SaveIptables(port)
 }

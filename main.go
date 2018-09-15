@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/Bpazy/ssManager/iptables"
 	"github.com/Bpazy/ssManager/result"
 	"github.com/Bpazy/ssManager/util"
 	"github.com/gin-gonic/gin"
@@ -27,10 +28,13 @@ func main() {
 	{
 		group.GET("/list", listHandler())
 		group.POST("/save", saveHandler())
+		group.POST("/edit", editHandler())
 		group.GET("/delete/:port", deleteHandler())
+		group.GET("/reset/:port", resetHandler())
 	}
 	r.Run(*port)
 }
+
 func errorMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Next()
@@ -39,11 +43,20 @@ func errorMiddleware() gin.HandlerFunc {
 		}
 	}
 }
+
 func deleteHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		port := c.Param("port")
-		DeletePort(port)
+		DeletePort(util.MustParseInt(port))
 		c.JSON(http.StatusOK, result.Ok("删除成功", ""))
+	}
+}
+
+func resetHandler() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		port := c.Param("port")
+		ResetPortUsage(util.MustParseInt(port))
+		c.JSON(http.StatusOK, result.Ok("重置成功", ""))
 	}
 }
 
@@ -57,8 +70,22 @@ func saveHandler() gin.HandlerFunc {
 		if !ok {
 			c.JSON(http.StatusOK, result.Fail("save failed", &p))
 		}
-		SaveIptables(p.Port)
+		iptables.SaveIptables(p.Port)
 		c.JSON(http.StatusOK, result.Ok("save success", &p))
+	}
+}
+
+func editHandler() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		p := Port{}
+		if ok := util.BindJson(c, &p); !ok {
+			return
+		}
+		ok := EditPort(&p)
+		if !ok {
+			c.JSON(http.StatusOK, result.Fail("save failed", &p))
+		}
+		c.JSON(http.StatusOK, result.Ok("edit success", &p))
 	}
 }
 
