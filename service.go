@@ -74,3 +74,14 @@ func ResetPortUsage(port int) {
 	iptables.DeleteIptables(port)
 	iptables.SaveIptables(port)
 }
+
+type User struct {
+	UserId       string `json:"userId"`
+	Username     string `json:"username"`
+	Nickname     string `json:"nickname"`
+	EmailAddress string `json:"emailAddress"`
+}
+
+func SaveUser(u *User) {
+
+}

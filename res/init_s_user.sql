@@ -1,0 +1,8 @@
+CREATE TABLE s_user
+(
+    USER_ID varchar(100) PRIMARY KEY NOT NULL,
+    USERNAME varchar(100) NOT NULL,
+    NICKNAME varchar(100),
+    EMAIL_ADDRESS varchar(100)
+);
+CREATE UNIQUE INDEX s_user_USERNAME_uindex ON s_user (USERNAME);

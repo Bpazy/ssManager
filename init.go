@@ -19,6 +19,10 @@ func init() {
 	if !tableExists("s_ports") {
 		createTable("s_ports")
 	}
+
+	if !tableExists("s_user") {
+		createTable("s_user")
+	}
 }
 
 func createTable(tableName string) {
