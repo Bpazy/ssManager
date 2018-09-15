@@ -76,12 +76,37 @@ func ResetPortUsage(port int) {
 }
 
 type User struct {
-	UserId       string `json:"userId"`
-	Username     string `json:"username"`
-	Nickname     string `json:"nickname"`
-	EmailAddress string `json:"emailAddress"`
+	UserId       string `json:"userId" db:"USER_ID"`
+	Username     string `json:"username" db:"USERNAME"`
+	Nickname     string `json:"nickname" db:"NICKNAME"`
+	EmailAddress string `json:"emailAddress" db:"EMAIL_ADDRESS"`
 }
 
-func SaveUser(u *User) {
+func SaveUser(u *User, password string) {
+	_, err := db.NamedExec("insert into s_user (user_id, username, nickname, email_address) values (:userId, :username, :nickname, :emailAddress)", u)
+	if err != nil {
+		panic(err)
+	}
+	_, err = db.Exec("insert into s_user_password (user_id, password) values (?, ?)", u.UserId, password)
+	if err != nil {
+		panic(err)
+	}
+}
 
+func FindUser(userId string) *User {
+	row := db.QueryRowx("select user_id, username, nickname, email_address from s_user where userId = ?", userId)
+	u := User{}
+	row.StructScan(&u)
+	return &u
+}
+
+func FindUserByAuth(username, password string) *User {
+	row := db.QueryRowx("select A.user_id, A.username, A.nickname, A.email_address from s_user A "+
+		"join s_user_password B on A.user_id = B.user_id where A.username = ? and B.password = ?", username, password)
+	u := User{}
+	err := row.StructScan(&u)
+	if err != nil {
+		return nil
+	}
+	return &u
 }

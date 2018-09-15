@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/Bpazy/ssManager/cookie"
 	"github.com/Bpazy/ssManager/iptables"
 	"github.com/Bpazy/ssManager/result"
 	"github.com/Bpazy/ssManager/util"
@@ -23,7 +24,7 @@ var (
 
 func main() {
 	r := gin.Default()
-	r.Use(errorMiddleware())
+	r.Use(errorMiddleware(), authMiddleware())
 	group := r.Group("/api")
 	{
 		group.GET("/list", listHandler())
@@ -31,14 +32,53 @@ func main() {
 		group.POST("/edit", editHandler())
 		group.GET("/delete/:port", deleteHandler())
 		group.GET("/reset/:port", resetHandler())
+		group.POST("/login", loginHandler())
 	}
 	r.Run(*port)
+}
+
+func loginHandler() gin.HandlerFunc {
+	type loginRequest = struct {
+		Username string `json:"username"`
+		Password string `json:"password"`
+	}
+	return func(c *gin.Context) {
+		l := loginRequest{}
+		if ok := util.BindJson(c, &l); !ok {
+			return
+		}
+		user := FindUserByAuth(l.Username, l.Password)
+		if user == nil {
+			c.JSON(http.StatusOK, result.Fail("username or password is incorrect", ""))
+			return
+		}
+		cookie.SaveUserId(c, user.UserId)
+		c.JSON(http.StatusOK, result.Ok("login success", user))
+	}
+}
+
+func authMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if c.Request.RequestURI == "/api/login" {
+			return
+		}
+		userId, err := cookie.GetSavedUserId(c)
+		if err != nil {
+			c.JSON(http.StatusOK, result.Fail("cookie error", err.Error()))
+			return
+		}
+		user := FindUser(userId)
+		if user == nil {
+			c.JSON(http.StatusOK, result.Fail("user not exists", err.Error()))
+		}
+	}
 }
 
 func errorMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Next()
 		if len(c.Errors) > 0 {
+			c.JSON(-1, result.Fail(c.Errors.Last().Error(), ""))
 			panic(c.Errors)
 		}
 	}
