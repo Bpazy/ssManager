@@ -1,8 +1,8 @@
 package cookie
 
 import (
+	"encoding/base64"
 	"github.com/Bpazy/ssManager/aes"
-	"github.com/Bpazy/ssManager/base64"
 	"github.com/gin-gonic/gin"
 )
 
@@ -23,7 +23,7 @@ func SaveUserId(c *gin.Context, userId string) {
 	if err != nil {
 		panic(err)
 	}
-	c.SetCookie(cookieName, base64.Encode(encryptedUserId), 60*60*8, "/", "", false, false)
+	c.SetCookie(cookieName, base64.URLEncoding.EncodeToString(encryptedUserId), 60*60*8, "/", "", false, false)
 }
 
 func GetSavedUserId(c *gin.Context) (string, error) {
@@ -31,7 +31,7 @@ func GetSavedUserId(c *gin.Context) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	encryptedUserId, err := base64.Decode(base64UserId)
+	encryptedUserId, err := base64.URLEncoding.DecodeString(base64UserId)
 	if err != nil {
 		return "", err
 	}
