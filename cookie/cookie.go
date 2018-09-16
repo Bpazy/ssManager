@@ -14,6 +14,10 @@ var (
 	key = []byte("1234567890123456")
 )
 
+func Clear(c *gin.Context) {
+	c.SetCookie(cookieName, "", 0, "/", "", false, false)
+}
+
 func SaveUserId(c *gin.Context, userId string) {
 	encryptedUserId, err := aes.Encrypt([]byte(userId), key)
 	if err != nil {

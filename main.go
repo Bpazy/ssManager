@@ -64,12 +64,15 @@ func authMiddleware() gin.HandlerFunc {
 		}
 		userId, err := cookie.GetSavedUserId(c)
 		if err != nil {
-			c.JSON(http.StatusOK, result.Fail("cookie error", err.Error()))
+			c.JSON(419, result.Fail("login needed", err.Error()))
+			c.Abort()
 			return
 		}
 		user := FindUser(userId)
 		if user == nil {
-			c.JSON(http.StatusOK, result.Fail("user not exists", err.Error()))
+			c.JSON(419, result.Fail("login needed", err.Error()))
+			cookie.Clear(c)
+			c.Abort()
 		}
 	}
 }
