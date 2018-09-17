@@ -19,12 +19,10 @@ func init() {
 	if !tableExists("s_ports") {
 		createTable("s_ports")
 	}
-	if !tableExists("s_user") {
+	if !tableExists("s_user") && !tableExists("s_user_password") {
 		createTable("s_user")
-		SaveUser(createAdminUser())
-	}
-	if !tableExists("s_user_password") {
 		createTable("s_user_password")
+		SaveUser(createAdminUser())
 	}
 }
 

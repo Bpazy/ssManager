@@ -76,14 +76,14 @@ func ResetPortUsage(port int) {
 }
 
 type User struct {
-	UserId       string `json:"userId" db:"USER_ID"`
-	Username     string `json:"username" db:"USERNAME"`
-	Nickname     string `json:"nickname" db:"NICKNAME"`
-	EmailAddress string `json:"emailAddress" db:"EMAIL_ADDRESS"`
+	UserId       string `json:"userId" db:"user_id"`
+	Username     string `json:"username" db:"username"`
+	Nickname     string `json:"nickname" db:"nickname"`
+	EmailAddress string `json:"emailAddress" db:"email_address"`
 }
 
 func SaveUser(u *User, password string) {
-	_, err := db.NamedExec("insert into s_user (user_id, username, nickname, email_address) values (:userId, :username, :nickname, :emailAddress)", u)
+	_, err := db.NamedExec("insert into s_user (user_id, username, nickname, email_address) values (:user_id, :username, :nickname, :email_address)", u)
 	if err != nil {
 		panic(err)
 	}

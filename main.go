@@ -1,12 +1,12 @@
 package main
 
 import (
+	"database/sql"
 	"github.com/Bpazy/ssManager/cookie"
 	"github.com/Bpazy/ssManager/iptables"
 	"github.com/Bpazy/ssManager/result"
 	"github.com/Bpazy/ssManager/util"
 	"github.com/gin-gonic/gin"
-	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
 	"net/http"
 	"sort"
@@ -17,7 +17,7 @@ const (
 )
 
 var (
-	db     *sqlx.DB
+	db     *sql.DB
 	port   *string
 	dbPath *string
 )
