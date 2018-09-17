@@ -1,9 +1,9 @@
 package main
 
 import (
+	"database/sql"
 	"flag"
 	"github.com/Bpazy/ssManager/util"
-	"github.com/jmoiron/sqlx"
 	"strings"
 )
 
@@ -12,7 +12,7 @@ func init() {
 	port = flag.String("port", ":8082", "server port")
 	flag.Parse()
 
-	db2, err := sqlx.Open("sqlite3", *dbPath)
+	db2, err := sql.Open("sqlite3", *dbPath)
 	util.ShouldPanic(err)
 	db = db2
 

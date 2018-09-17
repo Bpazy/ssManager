@@ -26,13 +26,13 @@ type Port struct {
 }
 
 func QueryPorts() []Port {
-	rows, err := db.Queryx("select * from s_ports order by port;")
+	rows, err := db.Query("select port, alias from s_ports order by port;")
 	util.ShouldPanic(err)
 	defer rows.Close()
 	ports := make([]Port, 0)
 	for rows.Next() {
 		var p Port
-		rows.StructScan(&p)
+		rows.Scan(&p.Port, &p.Alias)
 		ports = append(ports, p)
 	}
 
@@ -55,7 +55,7 @@ func DeletePort(port int) {
 }
 
 func SavePort(p *Port) bool {
-	_, err := db.NamedExec("insert into s_ports (port, alias) values (:port, :alias)", p)
+	_, err := db.Exec("insert into s_ports (port, alias) values (?, ?)", p.Port, p.Alias)
 	if err != nil {
 		return false
 	}
@@ -63,7 +63,7 @@ func SavePort(p *Port) bool {
 }
 
 func EditPort(p *Port) bool {
-	_, err := db.NamedExec("update s_ports set alias = :alias where port = :port", p)
+	_, err := db.Exec("update s_ports set alias = ? where port = ?", p.Alias, p.Port)
 	if err != nil {
 		return false
 	}
@@ -83,7 +83,8 @@ type User struct {
 }
 
 func SaveUser(u *User, password string) {
-	_, err := db.NamedExec("insert into s_user (user_id, username, nickname, email_address) values (:user_id, :username, :nickname, :email_address)", u)
+	_, err := db.Exec("insert into s_user (user_id, username, nickname, email_address) values (?, ?, ?, ?)",
+		u.UserId, u.Username, u.Nickname, u.EmailAddress)
 	if err != nil {
 		panic(err)
 	}
@@ -94,17 +95,17 @@ func SaveUser(u *User, password string) {
 }
 
 func FindUser(userId string) *User {
-	row := db.QueryRowx("select user_id, username, nickname, email_address from s_user where userId = ?", userId)
+	row := db.QueryRow("select user_id, username, nickname, email_address from s_user where userId = ?", userId)
 	u := User{}
-	row.StructScan(&u)
+	row.Scan(&u.UserId, &u.Username, &u.Nickname, &u.EmailAddress)
 	return &u
 }
 
 func FindUserByAuth(username, password string) *User {
-	row := db.QueryRowx("select A.user_id, A.username, A.nickname, A.email_address from s_user A "+
+	row := db.QueryRow("select A.user_id, A.username, A.nickname, A.email_address from s_user A "+
 		"join s_user_password B on A.user_id = B.user_id where A.username = ? and B.password = ?", username, password)
 	u := User{}
-	err := row.StructScan(&u)
+	err := row.Scan(&u.UserId, &u.Username, &u.Nickname, &u.EmailAddress)
 	if err != nil {
 		return nil
 	}
