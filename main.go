@@ -53,7 +53,6 @@ func loginHandler() gin.HandlerFunc {
 			return
 		}
 		cookie.SaveUserId(c, user.UserId)
-		// todo set cookie and json problem.
 		c.JSON(http.StatusOK, result.Ok("login success", user))
 	}
 }
