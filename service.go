@@ -111,3 +111,7 @@ func FindUserByAuth(username, password string) *User {
 	}
 	return &u
 }
+
+func AddPortPassword(port, password string) {
+	sc.AddPortPassword(port, password)
+}

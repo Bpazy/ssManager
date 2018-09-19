@@ -5,6 +5,7 @@ import (
 	"github.com/Bpazy/ssManager/cookie"
 	"github.com/Bpazy/ssManager/iptables"
 	"github.com/Bpazy/ssManager/result"
+	"github.com/Bpazy/ssManager/ss"
 	"github.com/Bpazy/ssManager/util"
 	"github.com/gin-gonic/gin"
 	_ "github.com/mattn/go-sqlite3"
@@ -17,9 +18,11 @@ const (
 )
 
 var (
-	db     *sql.DB
-	port   *string
-	dbPath *string
+	db             *sql.DB
+	port           *string
+	dbPath         *string
+	sc             ss.Client
+	configFilename *string
 )
 
 func main() {
@@ -33,8 +36,25 @@ func main() {
 		group.GET("/delete/:port", deleteHandler())
 		group.GET("/reset/:port", resetHandler())
 		group.POST("/login", loginHandler())
+
+		group.POST("/addPortPassword", addPortPasswordHandler())
 	}
 	r.Run(*port)
+}
+
+func addPortPasswordHandler() gin.HandlerFunc {
+	type addPortPasswordRequest struct {
+		Port     string `json:"port"`
+		Password string `json:"password"`
+	}
+	return func(c *gin.Context) {
+		r := addPortPasswordRequest{}
+		if ok := util.BindJson(c, &r); !ok {
+			c.JSON(http.StatusOK, result.Fail("add port password failed", ""))
+			return
+		}
+		AddPortPassword(r.Port, r.Password)
+	}
 }
 
 func loginHandler() gin.HandlerFunc {

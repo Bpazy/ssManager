@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"flag"
+	"github.com/Bpazy/ssManager/ss"
 	"github.com/Bpazy/ssManager/util"
 	"strings"
 )
@@ -10,11 +11,15 @@ import (
 func init() {
 	dbPath = flag.String("dbPath", "temp.db", "sqlite数据库文件路径")
 	port = flag.String("port", ":8082", "server port")
+	version := flag.String("type", "go", "shadowsocks type. such python or go")
+	configFilename = flag.String("filename", "config.json", "shadowsocks config file name")
 	flag.Parse()
 
 	db2, err := sql.Open("sqlite3", *dbPath)
 	util.ShouldPanic(err)
 	db = db2
+
+	sc = createSsClient(*version)
 
 	if !tableExists("s_ports") {
 		createTable("s_ports")
@@ -24,6 +29,14 @@ func init() {
 		createTable("s_user_password")
 		SaveUser(createAdminUser())
 	}
+}
+
+func createSsClient(version string) ss.Client {
+	switch version {
+	case "go":
+		return &ss.GoClient{Filename: *configFilename}
+	}
+	panic("not support shadowsocks version")
 }
 
 func createAdminUser() (*User, string) {
