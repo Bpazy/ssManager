@@ -11,6 +11,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 	"net/http"
 	"sort"
+	"strconv"
 )
 
 const (
@@ -38,8 +39,28 @@ func main() {
 		group.POST("/login", loginHandler())
 
 		group.POST("/addPortPassword", addPortPasswordHandler())
+		group.POST("/deletePort/:port", deletePortHandler())
+		group.POST("/restart", restartHandler())
 	}
 	r.Run(*port)
+}
+
+func deletePortHandler() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		port := c.Param("port")
+		sPort, err := strconv.Atoi(port)
+		if err != nil {
+			c.JSON(http.StatusOK, result.Fail("number port required", ""))
+		}
+		DeletePort(sPort)
+		c.JSON(http.StatusOK, result.Ok("delete success", ""))
+	}
+}
+
+func restartHandler() gin.HandlerFunc {
+	return func(c *gin.Context) {
+
+	}
 }
 
 func addPortPasswordHandler() gin.HandlerFunc {
@@ -54,6 +75,7 @@ func addPortPasswordHandler() gin.HandlerFunc {
 			return
 		}
 		AddPortPassword(r.Port, r.Password)
+		c.JSON(http.StatusOK, result.Ok("add port password success", ""))
 	}
 }
 
