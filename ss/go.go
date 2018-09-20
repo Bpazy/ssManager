@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"github.com/Bpazy/ssManager/util"
 	"io/ioutil"
+	"sort"
 )
 
 type GoClient struct {
@@ -24,10 +25,11 @@ func (c GoClient) QueryPorts() []string {
 	config, err := loadConfig(c.Filename)
 	util.ShouldPanic(err)
 
-	ports := make([]string, len(config.PortPassword))
+	var ports []string
 	for k := range config.PortPassword {
 		ports = append(ports, k)
 	}
+	sort.Strings(ports)
 	return ports
 }
 

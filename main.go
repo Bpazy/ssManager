@@ -39,10 +39,17 @@ func main() {
 		group.POST("/login", loginHandler())
 
 		group.POST("/addPortPassword", addPortPasswordHandler())
-		group.POST("/deletePort/:port", deletePortHandler())
+		group.GET("/queryPorts", queryPortsHandler())
+		group.GET("/deletePort/:port", deletePortHandler())
 		group.POST("/restart", restartHandler())
 	}
 	r.Run(*port)
+}
+
+func queryPortsHandler() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.JSON(http.StatusOK, sc.QueryPorts())
+	}
 }
 
 func deletePortHandler() gin.HandlerFunc {
