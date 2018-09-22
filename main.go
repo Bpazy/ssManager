@@ -39,7 +39,8 @@ func main() {
 		group.POST("/login", loginHandler())
 
 		group.POST("/addPortPassword", addPortPasswordHandler())
-		group.GET("/queryPorts", queryPortsHandler())
+		group.GET("/queryPortPasswords", queryPortsHandler())
+
 		group.GET("/deletePort/:port", deletePortHandler())
 		group.POST("/restart", restartHandler())
 	}
@@ -48,7 +49,7 @@ func main() {
 
 func queryPortsHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		c.JSON(http.StatusOK, sc.QueryPorts())
+		c.JSON(http.StatusOK, sc.QueryPortPasswords())
 	}
 }
 
