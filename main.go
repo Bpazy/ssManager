@@ -8,10 +8,12 @@ import (
 	"github.com/Bpazy/ssManager/ss"
 	"github.com/Bpazy/ssManager/util"
 	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
 	_ "github.com/mattn/go-sqlite3"
 	"net/http"
 	"sort"
 	"strconv"
+	"time"
 )
 
 const (
@@ -43,8 +45,34 @@ func main() {
 
 		group.GET("/deletePort/:port", deletePortHandler())
 		group.POST("/restart", restartHandler())
+		group.GET("/echo", echo())
 	}
 	r.Run(*port)
+}
+
+func echo() gin.HandlerFunc {
+	upgrader := websocket.Upgrader{}
+	upgrader.CheckOrigin = func(r *http.Request) bool {
+		return true
+	}
+	return func(c *gin.Context) {
+		con, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+		if err != nil {
+			panic(err)
+		}
+
+		con.ReadMessage()
+
+		go func() {
+			for {
+				err = con.WriteMessage(websocket.TextMessage, []byte("la la la"))
+				if err != nil {
+					panic(err)
+				}
+				time.Sleep(1 * time.Second)
+			}
+		}()
+	}
 }
 
 func queryPortsHandler() gin.HandlerFunc {
@@ -107,9 +135,11 @@ func loginHandler() gin.HandlerFunc {
 	}
 }
 
+var whiteList = []string{"/api/login", "/api/echo"}
+
 func authMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if c.Request.RequestURI == "/api/login" {
+		if util.ContainsString(whiteList, c.Request.RequestURI) {
 			return
 		}
 		userId, err := cookie.GetSavedUserId(c)
