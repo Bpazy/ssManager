@@ -42,8 +42,8 @@ func QueryPorts() []Port {
 		if p.Alias == "" {
 			p.Alias = "未配置"
 		}
-		p.UpstreamUsage = iptables.GetSptUsage(p.Port)
-		p.DownstreamUsage = iptables.GetDptUsage(p.Port)
+		p.UpstreamUsage = iptables.GetDptUsage(p.Port)
+		p.DownstreamUsage = iptables.GetSptUsage(p.Port)
 	}
 	return ports
 }
