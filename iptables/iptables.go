@@ -8,7 +8,8 @@ import (
 )
 
 const (
-	iptablesUsage     = "iptables -L -nvx | grep spt:{} | awk '{print $2}'"
+	iptablesSptUsage  = "iptables -L -nvx | grep spt:{} | awk '{print $2}'"
+	iptablesDptUsage  = "iptables -L -nvx | grep dpt:{} | awk '{print $2}'"
 	iptablesInputAdd  = "iptables -A INPUT -p tcp --dport {}"
 	iptablesInputDel  = "iptables -D INPUT -p tcp --dport {}"
 	iptablesOutputAdd = "iptables -A OUTPUT -p tcp --sport {}"
@@ -33,11 +34,22 @@ func SaveIptables(port int) {
 	util.MustRunCommand(strings.Replace(iptablesOutputAdd, "{}", strconv.Itoa(port), -1))
 }
 
-func GetUsage(port int) int64 {
+func GetSptUsage(port int) int64 {
 	if runtime.GOOS == "windows" {
 		return 0
 	}
-	i, ok := util.ShouldParseInt64(util.MustRunCommand(strings.Replace(iptablesUsage, "{}", strconv.Itoa(port), -1)))
+	i, ok := util.ShouldParseInt64(util.MustRunCommand(strings.Replace(iptablesSptUsage, "{}", strconv.Itoa(port), -1)))
+	if !ok {
+		return 0
+	}
+	return i
+}
+
+func GetDptUsage(port int) int64 {
+	if runtime.GOOS == "windows" {
+		return 0
+	}
+	i, ok := util.ShouldParseInt64(util.MustRunCommand(strings.Replace(iptablesDptUsage, "{}", strconv.Itoa(port), -1)))
 	if !ok {
 		return 0
 	}

@@ -12,7 +12,7 @@ func (p PortSorter) Len() int {
 }
 
 func (p PortSorter) Less(i, j int) bool {
-	return p[i].Usage < p[j].Usage
+	return p[i].UpstreamUsage < p[j].UpstreamUsage
 }
 
 func (p PortSorter) Swap(i, j int) {
@@ -20,9 +20,10 @@ func (p PortSorter) Swap(i, j int) {
 }
 
 type Port struct {
-	Port  int    `json:"port"`
-	Alias string `json:"alias"`
-	Usage int64  `json:"usage"`
+	Port            int    `json:"port"`
+	Alias           string `json:"alias"`
+	UpstreamUsage   int64  `json:"upstreamUsage"`
+	DownstreamUsage int64  `json:"downstreamUsage"`
 }
 
 func QueryPorts() []Port {
@@ -41,8 +42,8 @@ func QueryPorts() []Port {
 		if p.Alias == "" {
 			p.Alias = "未配置"
 		}
-		usage := iptables.GetUsage(p.Port)
-		p.Usage = usage
+		p.UpstreamUsage = iptables.GetSptUsage(p.Port)
+		p.DownstreamUsage = iptables.GetDptUsage(p.Port)
 	}
 	return ports
 }
