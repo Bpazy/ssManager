@@ -12,7 +12,7 @@ func (p PortSorter) Len() int {
 }
 
 func (p PortSorter) Less(i, j int) bool {
-	return p[i].UpstreamUsage < p[j].UpstreamUsage
+	return p[i].DownstreamUsage < p[j].DownstreamUsage
 }
 
 func (p PortSorter) Swap(i, j int) {
