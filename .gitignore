@@ -1,2 +1,4 @@
 .idea
-dev.db
+temp.db
+config.json
+secrets.tar

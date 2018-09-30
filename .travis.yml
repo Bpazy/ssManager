@@ -1,5 +1,6 @@
 language: go
-
 go:
-- "1.11"
-- master
+- '1.11'
+script:
+- go test -v ./...
+- go build -o ssManager .
