@@ -1,4 +1,4 @@
 .idea
 temp.db
 config.json
-secrets.tar
+deploy.sh
