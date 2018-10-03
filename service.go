@@ -36,6 +36,11 @@ func QueryPorts() []Port {
 		rows.Scan(&p.Port, &p.Alias)
 		ports = append(ports, p)
 	}
+	return ports
+}
+
+func QueryPortsWithUsage() []Port {
+	ports := QueryPorts()
 
 	for i := range ports {
 		p := &ports[i]

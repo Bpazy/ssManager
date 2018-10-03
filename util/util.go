@@ -24,6 +24,14 @@ func ShouldParseInt64(i string) (int64, bool) {
 	return atoi, true
 }
 
+func MustParseInt64(i string) int64 {
+	atoi, err := strconv.ParseInt(i, 10, 64)
+	if err != nil {
+		panic(err)
+	}
+	return atoi
+}
+
 func MustParseInt(i string) int {
 	atoi, e := strconv.Atoi(i)
 	if e != nil {

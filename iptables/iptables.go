@@ -2,6 +2,7 @@ package iptables
 
 import (
 	"github.com/Bpazy/ssManager/util"
+	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -14,6 +15,13 @@ const (
 	iptablesInputDel  = "iptables -D INPUT -p tcp --dport {}"
 	iptablesOutputAdd = "iptables -A OUTPUT -p tcp --sport {}"
 	iptablesOutputDel = "iptables -D OUTPUT -p tcp --sport {}"
+
+	iptablesUsage = "iptables -L -nvx"
+	grepSpt       = "grep spt:{}"
+)
+
+var (
+	sptRegexp = regexp.MustCompile("spt:(\\d+)")
 )
 
 func DeleteIptables(port int) {
@@ -54,4 +62,22 @@ func GetDptUsage(port int) int64 {
 		return 0
 	}
 	return i
+}
+
+func GetSptUsageMap(ports []int) (m map[int]int64) {
+	if runtime.GOOS == "windows" || len(ports) == 0 {
+		return
+	}
+
+	grepSpts := ""
+	for _, port := range ports {
+		grepSpts += "|" + strings.Replace(grepSpt, "{}", strconv.Itoa(port), -1)
+	}
+
+	lines := strings.Split(util.MustRunCommand(iptablesUsage+"|"+grepSpts[1:]), "\r")
+	for _, line := range lines {
+		port := sptRegexp.FindString(line)
+		m[util.MustParseInt(port)] = util.MustParseInt64(strings.Fields(line)[1])
+	}
+	return
 }

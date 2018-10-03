@@ -29,25 +29,44 @@ var (
 )
 
 func main() {
+
 	r := gin.Default()
 	r.Use(errorMiddleware(), authMiddleware())
-	group := r.Group("/api")
+	api := r.Group("/api")
 	{
-		group.GET("/list", listHandler())
-		group.POST("/save", saveHandler())
-		group.POST("/edit", editHandler())
-		group.GET("/delete/:port", deleteHandler())
-		group.GET("/reset/:port", resetHandler())
-		group.POST("/login", loginHandler())
-
-		group.POST("/addPortPassword", addPortPasswordHandler())
-		group.GET("/queryPortPasswords", queryPortsHandler())
-
-		group.GET("/deletePort/:port", deletePortHandler())
-		group.POST("/restart", restartHandler())
-		group.GET("/echo", echo())
+		api.POST("/login", loginHandler())
+		api.GET("/echo", echo())
 	}
+
+	usageApi := api.Group("/usage")
+	{
+		usageApi.GET("/list", listHandler())
+		usageApi.POST("/save", saveHandler())
+		usageApi.POST("/edit", editHandler())
+		usageApi.GET("/delete/:port", deleteHandler())
+		usageApi.GET("/reset/:port", resetHandler())
+	}
+
+	ssApi := api.Group("/ss")
+	{
+		ssApi.POST("/addPortPassword", addPortPasswordHandler())
+		ssApi.GET("/queryPortPasswords", queryPortsHandler())
+		ssApi.GET("/deletePort/:port", deletePortHandler())
+		ssApi.POST("/restart", restartHandler())
+	}
+
 	r.Run(*port)
+}
+
+func monitor() {
+	ports := QueryPorts()
+	intPorts := make([]int, len(ports))
+
+	for _, p := range ports {
+		intPorts = append(intPorts, p.Port)
+	}
+
+	usageMap := iptables.GetSptUsageMap(intPorts)
 }
 
 func echo() gin.HandlerFunc {
@@ -214,7 +233,7 @@ func editHandler() gin.HandlerFunc {
 
 func listHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		portStructs := QueryPorts()
+		portStructs := QueryPortsWithUsage()
 		sort.Sort(sort.Reverse(PortSorter(portStructs)))
 
 		c.JSON(http.StatusOK, portStructs)
