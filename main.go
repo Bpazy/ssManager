@@ -1,15 +1,18 @@
 package main
 
 import (
+	"container/list"
 	"database/sql"
 	"github.com/Bpazy/ssManager/cookie"
 	"github.com/Bpazy/ssManager/iptables"
 	"github.com/Bpazy/ssManager/result"
 	"github.com/Bpazy/ssManager/ss"
 	"github.com/Bpazy/ssManager/util"
+	"github.com/Bpazy/ssManager/ws"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	_ "github.com/mattn/go-sqlite3"
+	"log"
 	"net/http"
 	"sort"
 	"strconv"
@@ -26,9 +29,13 @@ var (
 	dbPath         *string
 	sc             ss.Client
 	configFilename *string
+	wsList               = new(list.List)
+	wsTimeout      int64 = 60
 )
 
 func main() {
+	go monitor()
+	go monitorConn()
 
 	r := gin.Default()
 	r.Use(errorMiddleware(), authMiddleware())
@@ -40,7 +47,6 @@ func main() {
 
 	usageApi := api.Group("/usage")
 	{
-		usageApi.GET("/list", listHandler())
 		usageApi.POST("/save", saveHandler())
 		usageApi.POST("/edit", editHandler())
 		usageApi.GET("/delete/:port", deleteHandler())
@@ -59,14 +65,35 @@ func main() {
 }
 
 func monitor() {
-	ports := QueryPorts()
-	intPorts := make([]int, len(ports))
+	for {
+		for e := wsList.Front(); e != nil; e = e.Next() {
+			c := e.Value.(*ws.Client)
 
-	for _, p := range ports {
-		intPorts = append(intPorts, p.Port)
+			portStructs := QueryPortsWithUsage()
+			sort.Sort(sort.Reverse(PortSorter(portStructs)))
+
+			c.Conn.WriteJSON(portStructs)
+		}
+
+		time.Sleep(3 * time.Second)
 	}
+}
 
-	usageMap := iptables.GetSptUsageMap(intPorts)
+func monitorConn() {
+	for {
+		for e := wsList.Front(); e != nil; {
+			c := e.Value.(*ws.Client)
+			next := e.Next()
+			if time.Now().Unix()-c.LastUpdateTime.Unix() > wsTimeout {
+				c.Close()
+				wsList.Remove(e)
+			}
+			e = next
+		}
+
+		log.Printf("current wsList len is: %d\n", wsList.Len())
+		time.Sleep(time.Duration(wsTimeout) * time.Second)
+	}
 }
 
 func echo() gin.HandlerFunc {
@@ -75,20 +102,27 @@ func echo() gin.HandlerFunc {
 		return true
 	}
 	return func(c *gin.Context) {
-		con, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+		conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 		if err != nil {
 			panic(err)
 		}
+		portStructs := QueryPortsWithUsage()
+		sort.Sort(sort.Reverse(PortSorter(portStructs)))
 
-		con.ReadMessage()
+		conn.WriteJSON(portStructs)
+		client := ws.Client{Conn: conn}
+		wsList.PushBack(&client)
 
 		go func() {
 			for {
-				err = con.WriteMessage(websocket.TextMessage, []byte("la la la"))
-				if err != nil {
-					panic(err)
+				if client.Closed() {
+					break
 				}
-				time.Sleep(1 * time.Second)
+				_, _, err := client.Conn.ReadMessage()
+				if err != nil {
+					break
+				}
+				client.UpdateTime()
 			}
 		}()
 	}
@@ -228,14 +262,5 @@ func editHandler() gin.HandlerFunc {
 			c.JSON(http.StatusOK, result.Fail("save failed", &p))
 		}
 		c.JSON(http.StatusOK, result.Ok("edit success", &p))
-	}
-}
-
-func listHandler() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		portStructs := QueryPortsWithUsage()
-		sort.Sort(sort.Reverse(PortSorter(portStructs)))
-
-		c.JSON(http.StatusOK, portStructs)
 	}
 }
