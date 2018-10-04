@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"github.com/gin-gonic/gin"
-	"log"
+	log "github.com/sirupsen/logrus"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -55,7 +55,7 @@ func MustRunCommand(c string) string {
 }
 
 func RunCommand(c string) (string, error) {
-	log.Println("command prepare: " + c)
+	log.Debugf("command prepare: " + c)
 	cmd := exec.Command("bash", "-c", c)
 	var out bytes.Buffer
 	cmd.Stdout = &out
@@ -63,7 +63,7 @@ func RunCommand(c string) (string, error) {
 	err := cmd.Run()
 
 	result := strings.TrimSpace(out.String())
-	log.Println("command result: " + result)
+	log.Debugf("command result: " + result)
 	return result, err
 }
 

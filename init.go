@@ -5,10 +5,15 @@ import (
 	"flag"
 	"github.com/Bpazy/ssManager/ss"
 	"github.com/Bpazy/ssManager/util"
+	"github.com/sirupsen/logrus"
+	"os"
 	"strings"
 )
 
 func init() {
+	logrus.SetOutput(os.Stdout)
+	logrus.SetLevel(logrus.DebugLevel)
+
 	dbPath = flag.String("dbPath", "temp.db", "sqlite数据库文件路径")
 	port = flag.String("port", ":8082", "server port")
 	version := flag.String("type", "go", "shadowsocks type. such python or go")

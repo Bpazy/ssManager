@@ -12,7 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	_ "github.com/mattn/go-sqlite3"
-	"log"
+	log "github.com/sirupsen/logrus"
 	"net/http"
 	"sort"
 	"strconv"
@@ -91,7 +91,7 @@ func monitorConn() {
 			e = next
 		}
 
-		log.Printf("current wsList len is: %d\n", wsList.Len())
+		log.Debugf("current wsList len is: %d", wsList.Len())
 		time.Sleep(time.Duration(wsTimeout) * time.Second)
 	}
 }
