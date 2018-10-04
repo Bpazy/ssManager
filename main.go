@@ -34,7 +34,7 @@ var (
 	configFilename *string
 	wsTimeout      int64 = 60
 	wsList               = new(list.List)
-	tokenSet             = hashset.New()
+	tokenSet             = hashset.New() // TODO merge into websocket.Client
 )
 
 func main() {
