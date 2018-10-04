@@ -4,11 +4,14 @@ import (
 	"container/list"
 	"database/sql"
 	"github.com/Bpazy/ssManager/cookie"
+	"github.com/Bpazy/ssManager/id"
 	"github.com/Bpazy/ssManager/iptables"
 	"github.com/Bpazy/ssManager/result"
 	"github.com/Bpazy/ssManager/ss"
 	"github.com/Bpazy/ssManager/util"
 	"github.com/Bpazy/ssManager/ws"
+	"github.com/emirpasic/gods/lists/arraylist"
+	"github.com/emirpasic/gods/sets/hashset"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	_ "github.com/mattn/go-sqlite3"
@@ -29,8 +32,9 @@ var (
 	dbPath         *string
 	sc             ss.Client
 	configFilename *string
-	wsList               = new(list.List)
 	wsTimeout      int64 = 60
+	wsList               = new(list.List)
+	tokenSet             = hashset.New()
 )
 
 func main() {
@@ -39,10 +43,16 @@ func main() {
 
 	r := gin.Default()
 	r.Use(errorMiddleware(), authMiddleware())
+
+	wsApi := r.Group("/ws")
+	{
+		wsApi.GET("/echo", echoHandler())
+	}
+
 	api := r.Group("/api")
 	{
 		api.POST("/login", loginHandler())
-		api.GET("/echo", echo())
+		api.GET("/token", tokenHandler())
 	}
 
 	usageApi := api.Group("/usage")
@@ -62,6 +72,14 @@ func main() {
 	}
 
 	r.Run(*port)
+}
+
+func tokenHandler() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		next := id.Next()
+		tokenSet.Add(next)
+		c.JSON(http.StatusOK, next)
+	}
 }
 
 func monitor() {
@@ -96,12 +114,18 @@ func monitorConn() {
 	}
 }
 
-func echo() gin.HandlerFunc {
+func echoHandler() gin.HandlerFunc {
 	upgrader := websocket.Upgrader{}
 	upgrader.CheckOrigin = func(r *http.Request) bool {
 		return true
 	}
 	return func(c *gin.Context) {
+		token := c.Query("token")
+		if !tokenSet.Contains(token) {
+			c.JSON(419, result.Fail("login needed", ""))
+			c.Abort()
+			return
+		}
 		conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 		if err != nil {
 			panic(err)
@@ -188,11 +212,11 @@ func loginHandler() gin.HandlerFunc {
 	}
 }
 
-var whiteList = []string{"/api/login", "/api/echo"}
+var whiteList = arraylist.New("/api/login", "/api/echo")
 
 func authMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if util.ContainsString(whiteList, c.Request.RequestURI) {
+		if whiteList.Contains(c.Request.URL.Path) {
 			return
 		}
 		userId, err := cookie.GetSavedUserId(c)

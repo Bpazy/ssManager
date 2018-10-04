@@ -66,12 +66,3 @@ func RunCommand(c string) (string, error) {
 	log.Debugf("command result: " + result)
 	return result, err
 }
-
-func ContainsString(slices []string, target string) bool {
-	for _, v := range slices {
-		if v == target {
-			return true
-		}
-	}
-	return false
-}
