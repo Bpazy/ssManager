@@ -34,7 +34,7 @@ var (
 	configFilename *string
 	wsTimeout      int64 = 60
 	wsList               = new(list.List)
-	wsTokenSet           = hashset.New() // TODO merge into websocket.Client
+	wsTokenSet           = hashset.New()
 )
 
 type WsToken struct {
