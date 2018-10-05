@@ -34,12 +34,18 @@ var (
 	configFilename *string
 	wsTimeout      int64 = 60
 	wsList               = new(list.List)
-	tokenSet             = hashset.New() // TODO merge into websocket.Client
+	wsTokenSet           = hashset.New() // TODO merge into websocket.Client
 )
+
+type WsToken struct {
+	Token      string
+	CreateTime time.Time
+}
 
 func main() {
 	go monitor()
-	go monitorConn()
+	go connMonitor()
+	go tokenMontitor()
 
 	r := gin.Default()
 	r.Use(errorMiddleware(), authMiddleware())
@@ -77,7 +83,7 @@ func main() {
 func tokenHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		next := id.Next()
-		tokenSet.Add(next)
+		wsTokenSet.Add(WsToken{next, time.Now()})
 		c.JSON(http.StatusOK, next)
 	}
 }
@@ -97,7 +103,19 @@ func monitor() {
 	}
 }
 
-func monitorConn() {
+func tokenMontitor() {
+	for {
+		for _, wsToken := range wsTokenSet.Values() {
+			token := wsToken.(WsToken)
+			if time.Now().Unix()-token.CreateTime.Unix() > 8*60*60 {
+				wsTokenSet.Remove(token)
+			}
+		}
+		time.Sleep(5 * time.Second)
+	}
+}
+
+func connMonitor() {
 	for {
 		for e := wsList.Front(); e != nil; {
 			c := e.Value.(*ws.Client)
@@ -121,6 +139,12 @@ func echoHandler() gin.HandlerFunc {
 	}
 	return func(c *gin.Context) {
 		token := c.Query("token")
+
+		tokenSet := hashset.New()
+		for _, wsToken := range wsTokenSet.Values() {
+			tokenSet.Add(wsToken.(WsToken).Token)
+		}
+
 		if !tokenSet.Contains(token) {
 			c.JSON(419, result.Fail("login needed", ""))
 			c.Abort()
