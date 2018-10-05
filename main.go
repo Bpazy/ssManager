@@ -90,10 +90,11 @@ func tokenHandler() gin.HandlerFunc {
 
 func monitor() {
 	for {
+		// TODO performance optimize
+		portStructs := QueryPortsWithUsage()
 		for e := wsList.Front(); e != nil; e = e.Next() {
 			c := e.Value.(*ws.Client)
 
-			portStructs := QueryPortsWithUsage()
 			sort.Sort(sort.Reverse(PortSorter(portStructs)))
 
 			c.Conn.WriteJSON(portStructs)
