@@ -46,7 +46,7 @@ type WsToken struct {
 func main() {
 	go monitor()
 	go connMonitor()
-	go tokenMontitor()
+	go tokenMonitor()
 
 	r := gin.Default()
 	r.Use(errorMiddleware(), authMiddleware())
@@ -105,7 +105,7 @@ func monitor() {
 	}
 }
 
-func tokenMontitor() {
+func tokenMonitor() {
 	for {
 		for _, wsToken := range wsTokenSet.Values() {
 			token := wsToken.(WsToken)
