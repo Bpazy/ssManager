@@ -23,7 +23,8 @@ import (
 )
 
 const (
-	tableInitPath = "res/init_{}.sql"
+	tableInitPath          = "res/init_{}.sql"
+	tokenEffectiveDuration = 60
 )
 
 var (
@@ -108,7 +109,7 @@ func tokenMontitor() {
 	for {
 		for _, wsToken := range wsTokenSet.Values() {
 			token := wsToken.(WsToken)
-			if time.Now().Unix()-token.CreateTime.Unix() > 8*60*60 {
+			if time.Now().Unix()-token.CreateTime.Unix() > tokenEffectiveDuration {
 				wsTokenSet.Remove(token)
 			}
 		}
