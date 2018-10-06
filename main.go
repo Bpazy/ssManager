@@ -1,12 +1,12 @@
 package main
 
 import (
-	"container/list"
 	"database/sql"
 	"flag"
 	"github.com/Bpazy/ssManager/cookie"
 	"github.com/Bpazy/ssManager/id"
 	"github.com/Bpazy/ssManager/iptables"
+	"github.com/Bpazy/ssManager/net"
 	"github.com/Bpazy/ssManager/result"
 	"github.com/Bpazy/ssManager/ss"
 	"github.com/Bpazy/ssManager/util"
@@ -33,13 +33,14 @@ var (
 	sc        ss.Client
 	wsTimeout int64 = 60
 
-	wsList     = new(list.List)
+	wsList     = arraylist.New()
 	wsTokenSet = hashset.New()
 
 	dbPath         = flag.String("dbPath", "temp.db", "sqlite数据库文件路径")
 	port           = flag.String("port", ":8082", "server port")
 	version        = flag.String("type", "go", "shadowsocks type. such python or go")
 	configFilename = flag.String("filename", "config.json", "shadowsocks config file name")
+	deviceName     = flag.String("i", "eth0", "network interface device name")
 )
 
 type WsToken struct {
@@ -48,11 +49,13 @@ type WsToken struct {
 }
 
 func main() {
-	flag.Parse()
-
 	go monitor()
-	go connMonitor()
+	go wsConnMonitor()
 	go tokenMonitor()
+
+	net.AddPorts(QueryPorts())
+	go net.DetectNet(*deviceName)
+	go writeSpeed()
 
 	r := gin.Default()
 	r.Use(errorMiddleware(), authMiddleware())
@@ -87,6 +90,34 @@ func main() {
 	r.Run(*port)
 }
 
+type Speed struct {
+	DownSpeed float32 `json:"downSpeed"`
+	UpSpeed   float32 `json:"upSpeed"`
+}
+
+func writeSpeed() {
+	for {
+		m := make(map[int]Speed)
+		for _, p := range QueryPorts() {
+			downSpeed, upSpeed := net.GetSpeed(p)
+			m[p] = Speed{
+				DownSpeed: downSpeed,
+				UpSpeed:   upSpeed,
+			}
+		}
+
+		for _, e := range wsList.Values() {
+			c := e.(*ws.Client)
+			c.Conn.WriteJSON(ws.H{
+				Type: ws.Speed,
+				Data: m,
+			})
+		}
+
+		time.Sleep(1 * time.Second)
+	}
+}
+
 func tokenHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		next := id.Next()
@@ -98,13 +129,15 @@ func tokenHandler() gin.HandlerFunc {
 func monitor() {
 	for {
 		// TODO performance optimize
-		portStructs := QueryPortsWithUsage()
-		for e := wsList.Front(); e != nil; e = e.Next() {
-			c := e.Value.(*ws.Client)
+		portStructs := QueryPortStructsWithUsage()
+		for _, e := range wsList.Values() {
+			c := e.(*ws.Client)
 
-			sort.Sort(sort.Reverse(PortSorter(portStructs)))
-
-			c.Conn.WriteJSON(portStructs)
+			sort.Sort(sort.Reverse(PortStructSorter(portStructs)))
+			c.Conn.WriteJSON(ws.H{
+				Type: ws.Usage,
+				Data: portStructs,
+			})
 		}
 
 		time.Sleep(3 * time.Second)
@@ -123,19 +156,17 @@ func tokenMonitor() {
 	}
 }
 
-func connMonitor() {
+func wsConnMonitor() {
 	for {
-		for e := wsList.Front(); e != nil; {
-			c := e.Value.(*ws.Client)
-			next := e.Next()
+		for i, e := range wsList.Values() {
+			c := e.(*ws.Client)
 			if time.Now().Unix()-c.LastUpdateTime.Unix() > wsTimeout {
 				c.Close()
-				wsList.Remove(e)
+				wsList.Remove(i)
 			}
-			e = next
 		}
 
-		log.Debugf("current wsList len is: %d", wsList.Len())
+		log.Debugf("current wsList len is: %d", wsList.Size())
 		time.Sleep(time.Duration(wsTimeout) * time.Second)
 	}
 }
@@ -162,12 +193,12 @@ func echoHandler() gin.HandlerFunc {
 		if err != nil {
 			panic(err)
 		}
-		portStructs := QueryPortsWithUsage()
-		sort.Sort(sort.Reverse(PortSorter(portStructs)))
+		portStructs := QueryPortStructsWithUsage()
+		sort.Sort(sort.Reverse(PortStructSorter(portStructs)))
 
 		conn.WriteJSON(portStructs)
 		client := ws.Client{Conn: conn}
-		wsList.PushBack(&client)
+		wsList.Add(&client)
 
 		go func() {
 			for {
@@ -294,7 +325,7 @@ func resetHandler() gin.HandlerFunc {
 
 func saveHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		p := Port{}
+		p := PortStruct{}
 		if ok := util.BindJson(c, &p); !ok {
 			return
 		}
@@ -309,7 +340,7 @@ func saveHandler() gin.HandlerFunc {
 
 func editHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		p := Port{}
+		p := PortStruct{}
 		if ok := util.BindJson(c, &p); !ok {
 			return
 		}

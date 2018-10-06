@@ -5,42 +5,54 @@ import (
 	"github.com/Bpazy/ssManager/util"
 )
 
-type PortSorter []Port
+type PortStructSorter []PortStruct
 
-func (p PortSorter) Len() int {
+func (p PortStructSorter) Len() int {
 	return len(p)
 }
 
-func (p PortSorter) Less(i, j int) bool {
+func (p PortStructSorter) Less(i, j int) bool {
 	return p[i].DownstreamUsage < p[j].DownstreamUsage
 }
 
-func (p PortSorter) Swap(i, j int) {
+func (p PortStructSorter) Swap(i, j int) {
 	p[i], p[j] = p[j], p[i]
 }
 
-type Port struct {
+type PortStruct struct {
 	Port            int    `json:"port"`
 	Alias           string `json:"alias"`
 	UpstreamUsage   int64  `json:"upstreamUsage"`
 	DownstreamUsage int64  `json:"downstreamUsage"`
 }
 
-func QueryPorts() []Port {
-	rows, err := db.Query("select port, alias from s_ports order by port;")
-	util.ShouldPanic(err)
-	defer rows.Close()
-	ports := make([]Port, 0)
-	for rows.Next() {
-		var p Port
-		rows.Scan(&p.Port, &p.Alias)
-		ports = append(ports, p)
+func QueryPorts() []int {
+	portStructs := QueryPortStructs()
+	ports := make([]int, len(portStructs))
+
+	for _, portStruct := range portStructs {
+		ports = append(ports, portStruct.Port)
 	}
 	return ports
 }
 
-func QueryPortsWithUsage() []Port {
-	ports := QueryPorts()
+func QueryPortStructs() []PortStruct {
+	rows, err := db.Query("select port, alias from s_ports order by port")
+	util.ShouldPanic(err)
+	defer rows.Close()
+
+	ports := make([]PortStruct, 0)
+	for rows.Next() {
+		var p PortStruct
+		rows.Scan(&p.Port, &p.Alias)
+		ports = append(ports, p)
+	}
+
+	return ports
+}
+
+func QueryPortStructsWithUsage() []PortStruct {
+	ports := QueryPortStructs()
 
 	for i := range ports {
 		p := &ports[i]
@@ -60,7 +72,7 @@ func DeletePort(port int) {
 	util.ShouldPanic(err)
 }
 
-func SavePort(p *Port) bool {
+func SavePort(p *PortStruct) bool {
 	_, err := db.Exec("insert into s_ports (port, alias) values (?, ?)", p.Port, p.Alias)
 	if err != nil {
 		return false
@@ -68,7 +80,7 @@ func SavePort(p *Port) bool {
 	return true
 }
 
-func EditPort(p *Port) bool {
+func EditPort(p *PortStruct) bool {
 	_, err := db.Exec("update s_ports set alias = ? where port = ?", p.Alias, p.Port)
 	if err != nil {
 		return false

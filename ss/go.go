@@ -3,6 +3,7 @@ package ss
 import (
 	"encoding/json"
 	"github.com/Bpazy/ssManager/util"
+	"github.com/sirupsen/logrus"
 	"io/ioutil"
 )
 
@@ -53,6 +54,7 @@ func (GoClient) Restart() error {
 }
 
 func loadConfig(filename string) (c *GoConfig, err error) {
+	logrus.Debug(filename)
 	fileBytes, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return nil, err
