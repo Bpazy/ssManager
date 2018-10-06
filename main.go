@@ -3,6 +3,7 @@ package main
 import (
 	"container/list"
 	"database/sql"
+	"flag"
 	"github.com/Bpazy/ssManager/cookie"
 	"github.com/Bpazy/ssManager/id"
 	"github.com/Bpazy/ssManager/iptables"
@@ -28,14 +29,17 @@ const (
 )
 
 var (
-	db             *sql.DB
-	port           *string
-	dbPath         *string
-	sc             ss.Client
-	configFilename *string
-	wsTimeout      int64 = 60
-	wsList               = new(list.List)
-	wsTokenSet           = hashset.New()
+	db        *sql.DB
+	sc        ss.Client
+	wsTimeout int64 = 60
+
+	wsList     = new(list.List)
+	wsTokenSet = hashset.New()
+
+	dbPath         = flag.String("dbPath", "temp.db", "sqlite数据库文件路径")
+	port           = flag.String("port", ":8082", "server port")
+	version        = flag.String("type", "go", "shadowsocks type. such python or go")
+	configFilename = flag.String("filename", "config.json", "shadowsocks config file name")
 )
 
 type WsToken struct {
@@ -44,6 +48,8 @@ type WsToken struct {
 }
 
 func main() {
+	flag.Parse()
+
 	go monitor()
 	go connMonitor()
 	go tokenMonitor()

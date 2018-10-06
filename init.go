@@ -2,7 +2,6 @@ package main
 
 import (
 	"database/sql"
-	"flag"
 	"github.com/Bpazy/ssManager/ss"
 	"github.com/Bpazy/ssManager/util"
 	"github.com/sirupsen/logrus"
@@ -13,12 +12,6 @@ import (
 func init() {
 	logrus.SetOutput(os.Stdout)
 	logrus.SetLevel(logrus.DebugLevel)
-
-	dbPath = flag.String("dbPath", "temp.db", "sqlite数据库文件路径")
-	port = flag.String("port", ":8082", "server port")
-	version := flag.String("type", "go", "shadowsocks type. such python or go")
-	configFilename = flag.String("filename", "config.json", "shadowsocks config file name")
-	flag.Parse()
 
 	db2, err := sql.Open("sqlite3", *dbPath)
 	util.ShouldPanic(err)
