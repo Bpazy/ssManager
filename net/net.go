@@ -51,9 +51,11 @@ func capture(handle *pcap.Handle) {
 
 			if ports.Contains(int(tcp.DstPort)) {
 				portUpDataSize[int(tcp.DstPort)] += len(packet.Data())
+				continue
 			}
 			if ports.Contains(int(tcp.SrcPort)) {
 				portDownSize[int(tcp.SrcPort)] += len(packet.Data())
+				continue
 			}
 		}
 	}
