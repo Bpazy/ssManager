@@ -1,12 +1,11 @@
 package main
 
 import (
-	"database/sql"
 	"flag"
+	"github.com/Bpazy/ssManager/catcher"
 	"github.com/Bpazy/ssManager/cookie"
 	"github.com/Bpazy/ssManager/id"
 	"github.com/Bpazy/ssManager/iptables"
-	"github.com/Bpazy/ssManager/net"
 	"github.com/Bpazy/ssManager/result"
 	"github.com/Bpazy/ssManager/ss"
 	"github.com/Bpazy/ssManager/util"
@@ -15,8 +14,6 @@ import (
 	"github.com/emirpasic/gods/sets/hashset"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
-	_ "github.com/mattn/go-sqlite3"
-	"github.com/rickb777/date"
 	log "github.com/sirupsen/logrus"
 	"net/http"
 	"sort"
@@ -27,19 +24,15 @@ import (
 const (
 	tableInitPath          = "res/init_{}.sql"
 	tokenEffectiveDuration = 60
-
-	saveTodayUsageInterval = 1 * time.Minute
 )
 
 var (
-	db        *sql.DB
 	sc        ss.Client
 	wsTimeout int64 = 60
 
 	wsList     = arraylist.New()
 	wsTokenSet = hashset.New()
 
-	dbPath         = flag.String("dbPath", "temp.db", "sqlite数据库文件路径")
 	port           = flag.String("port", ":8082", "server port")
 	version        = flag.String("type", "go", "shadowsocks type. such python or go")
 	configFilename = flag.String("filename", "config.json", "shadowsocks config file name")
@@ -52,29 +45,28 @@ type WsToken struct {
 }
 
 func main() {
-	go monitor()
+	c := catcher.New(*deviceName, QueryPorts())
+	go writeUsage(c) // WebSocket write usage
+	go writeSpeed(c) // WebSocket write speed
+
+	runServer()
+}
+
+func runServer() {
 	go wsConnMonitor()
 	go tokenMonitor()
 
-	net.AddPorts(QueryPorts())
-	go net.DetectNet(*deviceName)
-	go writeSpeed()
-	go saveTodayUsage()
-
 	r := gin.Default()
 	r.Use(errorMiddleware(), authMiddleware())
-
 	wsApi := r.Group("/ws")
 	{
 		wsApi.GET("/echo", echoHandler())
 	}
-
 	api := r.Group("/api")
 	{
 		api.POST("/login", loginHandler())
 		api.GET("/token", tokenHandler())
 	}
-
 	usageApi := api.Group("/usage")
 	{
 		usageApi.POST("/save", saveHandler())
@@ -82,7 +74,6 @@ func main() {
 		usageApi.GET("/delete/:port", deleteHandler())
 		usageApi.GET("/reset/:port", resetHandler())
 	}
-
 	ssApi := api.Group("/ss")
 	{
 		ssApi.POST("/addPortPassword", addPortPasswordHandler())
@@ -94,43 +85,18 @@ func main() {
 	r.Run(*port)
 }
 
-type usage struct {
-	Port      int
-	Date      date.Date
-	DownUsage int
-	UpUsage   int
-}
-
-func saveTodayUsage() {
-	for {
-		downSizeMap := net.GetTodayPortDownSize()
-		upSizeMap := net.GetTodayPortUpSize()
-
-		for p, dUsage := range downSizeMap {
-			row := db.QueryRow("select port, `date`, downUsage, upUsage from s_usage")
-			u2 := usage{}
-			err := row.Scan(&u2.Port, &u2.Date, &u2.DownUsage, &u2.UpUsage)
-			if err == nil {
-				db.Exec("insert into s_usage (port, date, downUsage, upUsage) VALUES (?,?,?,?)",
-					p, date.Today(), dUsage)
-			}
-		}
-
-		time.Sleep(saveTodayUsageInterval)
-	}
-}
-
 type Speed struct {
 	DownSpeed float32 `json:"downSpeed"`
 	UpSpeed   float32 `json:"upSpeed"`
 }
 
-func writeSpeed() {
+func writeSpeed(c *catcher.Catcher) {
 	for {
 		m := make(map[int]Speed)
-		for _, p := range QueryPorts() {
-			downSpeed, upSpeed := net.GetSpeed(p)
-			m[p] = Speed{
+		for _, p := range c.Ports.Values() {
+			i := p.(int)
+			downSpeed, upSpeed := c.GetSpeed(i)
+			m[i] = Speed{
 				DownSpeed: downSpeed,
 				UpSpeed:   upSpeed,
 			}
@@ -156,9 +122,9 @@ func tokenHandler() gin.HandlerFunc {
 	}
 }
 
-func monitor() {
+func writeUsage(c *catcher.Catcher) {
 	for {
-		// TODO performance optimize
+		// TODO refactor with catcher
 		portStructs := QueryPortStructsWithUsage()
 		for _, e := range wsList.Values() {
 			c := e.(*ws.Client)
