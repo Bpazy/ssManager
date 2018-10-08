@@ -29,6 +29,9 @@ func init() {
 		createTable("s_user_password")
 		SaveUser(createAdminUser())
 	}
+	if !tableExists("s_usage") {
+		createTable("s_usage")
+	}
 }
 
 func createSsClient(version string) ss.Client {

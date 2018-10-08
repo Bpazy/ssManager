@@ -16,6 +16,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/rickb777/date"
 	log "github.com/sirupsen/logrus"
 	"net/http"
 	"sort"
@@ -26,6 +27,8 @@ import (
 const (
 	tableInitPath          = "res/init_{}.sql"
 	tokenEffectiveDuration = 60
+
+	saveTodayUsageInterval = 1 * time.Minute
 )
 
 var (
@@ -56,6 +59,7 @@ func main() {
 	net.AddPorts(QueryPorts())
 	go net.DetectNet(*deviceName)
 	go writeSpeed()
+	go saveTodayUsage()
 
 	r := gin.Default()
 	r.Use(errorMiddleware(), authMiddleware())
@@ -88,6 +92,32 @@ func main() {
 	}
 
 	r.Run(*port)
+}
+
+type usage struct {
+	Port      int
+	Date      date.Date
+	DownUsage int
+	UpUsage   int
+}
+
+func saveTodayUsage() {
+	for {
+		downSizeMap := net.GetTodayPortDownSize()
+		upSizeMap := net.GetTodayPortUpSize()
+
+		for p, dUsage := range downSizeMap {
+			row := db.QueryRow("select port, `date`, downUsage, upUsage from s_usage")
+			u2 := usage{}
+			err := row.Scan(&u2.Port, &u2.Date, &u2.DownUsage, &u2.UpUsage)
+			if err == nil {
+				db.Exec("insert into s_usage (port, date, downUsage, upUsage) VALUES (?,?,?,?)",
+					p, date.Today(), dUsage)
+			}
+		}
+
+		time.Sleep(saveTodayUsageInterval)
+	}
 }
 
 type Speed struct {

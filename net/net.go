@@ -1,29 +1,39 @@
 package net
 
 import (
+	"fmt"
 	"github.com/emirpasic/gods/lists/arraylist"
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcap"
+	"github.com/rickb777/date"
 	"time"
 )
 
 var (
-	ports          = arraylist.New()
-	portDownSize   = make(map[int]int)
-	portUpDataSize = make(map[int]int)
-	portDownSpeed  = make(map[int]float32)
-	portUpSpeed    = make(map[int]float32)
+	ports = arraylist.New()
+
+	perUnitTimePortDownSize = make(map[int]int)
+	perUnitTimePortUpSize   = make(map[int]int)
+	portDownSpeed           = make(map[int]float32)
+	portUpSpeed             = make(map[int]float32)
+
+	datePortUsage = make(map[date.Date]map[int]Usage) // Date => map[port]Usage
 )
+
+type Usage struct {
+	Down int
+	Up   int
+}
+
+func GetTodayUsage() map[int]Usage {
+
+}
 
 func AddPorts(_ports []int) {
 	for _, port := range _ports {
 		ports.Add(port)
 	}
-}
-
-func RemovePort(port int) {
-	ports.Remove(port)
 }
 
 func DetectNet(deviceName string) *pcap.Handle {
@@ -49,12 +59,16 @@ func capture(handle *pcap.Handle) {
 		if tcpLayer != nil {
 			tcp := tcpLayer.(*layers.TCP)
 
+			today := date.Today()
+			dataSize := len(packet.Data())
 			if ports.Contains(int(tcp.DstPort)) {
-				portUpDataSize[int(tcp.DstPort)] += len(packet.Data())
+				perUnitTimePortUpSize[int(tcp.DstPort)] += dataSize
+				datePortUsage[today][int(tcp.DstPort)].Down += dataSize
 				continue
 			}
 			if ports.Contains(int(tcp.SrcPort)) {
-				portDownSize[int(tcp.SrcPort)] += len(packet.Data())
+				perUnitTimePortDownSize[int(tcp.SrcPort)] += dataSize
+				datePortUpSize[today] += dataSize
 				continue
 			}
 		}
@@ -64,13 +78,13 @@ func capture(handle *pcap.Handle) {
 func calculateNetSpeed() {
 	for {
 		duration := 1
-		for port, size := range portUpDataSize {
+		for port, size := range perUnitTimePortUpSize {
 			portUpSpeed[port] = float32(size) / float32(duration)
-			portUpDataSize[port] = 0
+			perUnitTimePortUpSize[port] = 0
 		}
-		for port, size := range portDownSize {
+		for port, size := range perUnitTimePortDownSize {
 			portDownSpeed[port] = float32(size) / float32(duration)
-			portDownSize[port] = 0
+			perUnitTimePortDownSize[port] = 0
 		}
 
 		time.Sleep(time.Duration(duration) * time.Second)
