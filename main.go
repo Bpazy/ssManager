@@ -54,7 +54,9 @@ func main() {
 	go tokenMonitor()
 
 	net.AddPorts(QueryPorts())
-	go net.DetectNet(*deviceName)
+	handle := net.DetectNet(*deviceName)
+	defer handle.Close()
+
 	go writeSpeed()
 
 	r := gin.Default()
