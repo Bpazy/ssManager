@@ -6,14 +6,16 @@ require (
 	github.com/gin-contrib/sse v0.0.0-20170109093832-22d885f9ecc7 // indirect
 	github.com/gin-gonic/gin v1.3.0
 	github.com/golang/protobuf v1.2.0 // indirect
+	github.com/google/go-cmp v0.2.0 // indirect
 	github.com/google/gopacket v1.1.15
 	github.com/gorilla/websocket v1.4.0
 	github.com/json-iterator/go v1.1.5 // indirect
 	github.com/mattn/go-isatty v0.0.4 // indirect
 	github.com/mattn/go-sqlite3 v1.9.0
+	github.com/mdlayher/raw v0.0.0-20180904195823-67a536258490 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.1 // indirect
-	github.com/rickb777/date v1.7.2 // indirect
+	github.com/rickb777/date v1.7.2
 	github.com/sirupsen/logrus v1.1.0
 	github.com/ugorji/go/codec v0.0.0-20180831062425-e253f1f20942 // indirect
 	golang.org/x/net v0.0.0-20180906233101-161cd47e91fd // indirect
