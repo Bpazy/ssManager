@@ -49,10 +49,10 @@ func main() {
 	go writeUsage(c) // WebSocket write usage
 	go writeSpeed(c) // WebSocket write speed
 
-	runServer()
+	runServer(c)
 }
 
-func runServer() {
+func runServer(c *catcher.Catcher) {
 	go wsConnMonitor()
 	go tokenMonitor()
 
@@ -60,7 +60,7 @@ func runServer() {
 	r.Use(errorMiddleware(), authMiddleware())
 	wsApi := r.Group("/ws")
 	{
-		wsApi.GET("/echo", echoHandler())
+		wsApi.GET("/echo", echoHandler(c))
 	}
 	api := r.Group("/api")
 	{
@@ -124,8 +124,7 @@ func tokenHandler() gin.HandlerFunc {
 
 func writeUsage(c *catcher.Catcher) {
 	for {
-		// TODO refactor with catcher
-		portStructs := QueryPortStructsWithUsage()
+		portStructs := getTotalUsage(c)
 		for _, e := range wsList.Values() {
 			c := e.(*ws.Client)
 
@@ -138,6 +137,18 @@ func writeUsage(c *catcher.Catcher) {
 
 		time.Sleep(3 * time.Second)
 	}
+}
+
+func getTotalUsage(c *catcher.Catcher) []PortStruct {
+	portStructs := QueryPortStructs()
+	monthUsage := c.GetMonthUsage()
+	for i, p := range portStructs {
+		if monthUsage[p.Port] != nil {
+			portStructs[i].DownstreamUsage = monthUsage[p.Port].DownUsage
+			portStructs[i].UpstreamUsage = monthUsage[p.Port].UpUsage
+		}
+	}
+	return portStructs
 }
 
 func tokenMonitor() {
@@ -167,7 +178,7 @@ func wsConnMonitor() {
 	}
 }
 
-func echoHandler() gin.HandlerFunc {
+func echoHandler(ca *catcher.Catcher) gin.HandlerFunc {
 	upgrader := websocket.Upgrader{}
 	upgrader.CheckOrigin = func(r *http.Request) bool {
 		return true
@@ -189,10 +200,9 @@ func echoHandler() gin.HandlerFunc {
 		if err != nil {
 			panic(err)
 		}
-		portStructs := QueryPortStructsWithUsage()
-		sort.Sort(sort.Reverse(PortStructSorter(portStructs)))
 
-		conn.WriteJSON(portStructs)
+		conn.WriteJSON(getTotalUsage(ca))
+
 		client := ws.Client{Conn: conn}
 		wsList.Add(&client)
 

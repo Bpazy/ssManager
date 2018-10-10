@@ -22,8 +22,8 @@ func (p PortStructSorter) Swap(i, j int) {
 type PortStruct struct {
 	Port            int    `json:"port"`
 	Alias           string `json:"alias"`
-	UpstreamUsage   int64  `json:"upstreamUsage"`
-	DownstreamUsage int64  `json:"downstreamUsage"`
+	UpstreamUsage   int    `json:"upstreamUsage"`
+	DownstreamUsage int    `json:"downstreamUsage"`
 }
 
 func QueryPorts() []int {
@@ -50,20 +50,6 @@ func QueryPortStructs() []PortStruct {
 		ports = append(ports, p)
 	}
 
-	return ports
-}
-
-func QueryPortStructsWithUsage() []PortStruct {
-	ports := QueryPortStructs()
-
-	for i := range ports {
-		p := &ports[i]
-		if p.Alias == "" {
-			p.Alias = "未配置"
-		}
-		p.UpstreamUsage = iptables.GetDptUsage(p.Port)
-		p.DownstreamUsage = iptables.GetSptUsage(p.Port)
-	}
 	return ports
 }
 

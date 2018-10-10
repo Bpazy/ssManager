@@ -15,18 +15,22 @@ const (
 )
 
 type Usage struct {
-	Port      int
-	Time      time.Time
 	DownUsage int
 	UpUsage   int
 }
 
-func (u Usage) GetDate() date.Date {
+type DateUsage struct {
+	Port int
+	Time time.Time
+	Usage
+}
+
+func (u DateUsage) GetDate() date.Date {
 	return date.NewAt(u.Time)
 }
 
 type Catcher struct {
-	DatePortUsage map[date.Date]map[int]*Usage
+	DatePortUsage map[date.Date]map[int]*DateUsage
 	Ports         *arraylist.List
 
 	perUnitTimePortDownSize map[int]int
@@ -37,7 +41,7 @@ type Catcher struct {
 
 func New(deviceName string, ports []int) *Catcher {
 	c := Catcher{}
-	c.DatePortUsage = make(map[date.Date]map[int]*Usage)
+	c.DatePortUsage = make(map[date.Date]map[int]*DateUsage)
 	c.Ports = arraylist.New()
 	c.perUnitTimePortDownSize = make(map[int]int)
 	c.perUnitTimePortUpSize = make(map[int]int)
@@ -53,27 +57,27 @@ func New(deviceName string, ports []int) *Catcher {
 	return &c
 }
 
-func readTodayUsageFromDb() map[date.Date]map[int]*Usage {
+func readTodayUsageFromDb() map[date.Date]map[int]*DateUsage {
 	rows, err := db.Ins.Query("select port, `date`, downUsage, upUsage from s_usage where date(`date`) = date('now')")
 	if err != nil {
 		panic(err)
 	}
 	defer rows.Close()
 
-	var l []*Usage
+	var l []*DateUsage
 
 	for rows.Next() {
-		u := Usage{}
+		u := DateUsage{}
 		rows.Scan(&u.Port, &u.Time, &u.DownUsage, &u.UpUsage)
 		l = append(l, &u)
 	}
 
-	m := map[int]*Usage{}
+	m := map[int]*DateUsage{}
 	for _, u := range l {
 		m[u.Port] = u
 	}
 
-	r := make(map[date.Date]map[int]*Usage)
+	r := make(map[date.Date]map[int]*DateUsage)
 	r[date.Today()] = m
 	return r
 }
@@ -84,8 +88,33 @@ func (c *Catcher) AddPorts(ports []int) {
 	}
 }
 
-func (c Catcher) GetTodayUsage() map[int]*Usage {
+func (c Catcher) GetTodayUsage() map[int]*DateUsage {
 	return c.DatePortUsage[date.Today()]
+}
+
+func (c Catcher) GetMonthUsage() map[int]*Usage {
+	rows, err := db.Ins.Query("select port, sum(downUsage), sum(upUsage) from s_usage " +
+		"where date(`date`) between date('now','start of month') and date('now', '-1 day') " +
+		"group by port")
+	if err != nil {
+		panic(err)
+	}
+	defer rows.Close()
+
+	todayUsage, ok := c.DatePortUsage[date.Today()]
+
+	m := make(map[int]*Usage)
+	p := 0
+	u := Usage{}
+	for rows.Next() {
+		rows.Scan(&p, &u.DownUsage, &u.UpUsage)
+		if ok {
+			u.DownUsage += todayUsage[p].DownUsage
+			u.UpUsage += todayUsage[p].UpUsage
+		}
+		m[p] = &u
+	}
+	return m
 }
 
 func (c *Catcher) detectNet(deviceName string) *pcap.Handle {
@@ -118,11 +147,11 @@ func (c *Catcher) capture(handle *pcap.Handle) {
 
 				_, ok := c.DatePortUsage[today]
 				if !ok {
-					c.DatePortUsage[today] = map[int]*Usage{}
+					c.DatePortUsage[today] = map[int]*DateUsage{}
 				}
 				_, ok = c.DatePortUsage[today][int(tcp.DstPort)]
 				if !ok {
-					c.DatePortUsage[today][int(tcp.DstPort)] = &Usage{Time: time.Now()}
+					c.DatePortUsage[today][int(tcp.DstPort)] = &DateUsage{Time: time.Now()}
 				}
 				c.DatePortUsage[today][int(tcp.DstPort)].DownUsage += dataSize
 				continue
@@ -132,11 +161,11 @@ func (c *Catcher) capture(handle *pcap.Handle) {
 
 				_, ok := c.DatePortUsage[today]
 				if !ok {
-					c.DatePortUsage[today] = map[int]*Usage{}
+					c.DatePortUsage[today] = map[int]*DateUsage{}
 				}
 				_, ok = c.DatePortUsage[today][int(tcp.SrcPort)]
 				if !ok {
-					c.DatePortUsage[today][int(tcp.SrcPort)] = &Usage{Time: time.Now()}
+					c.DatePortUsage[today][int(tcp.SrcPort)] = &DateUsage{Time: time.Now()}
 				}
 				c.DatePortUsage[today][int(tcp.SrcPort)].UpUsage += dataSize
 				continue
@@ -167,7 +196,7 @@ func (c *Catcher) saveTodayUsage() {
 
 		for p, u := range todayUsage {
 			row := db.Ins.QueryRow("select port, `date`, downUsage, upUsage from s_usage")
-			u2 := Usage{}
+			u2 := DateUsage{}
 			err := row.Scan(&u2.Port, &u2.Time, &u2.DownUsage, &u2.UpUsage)
 			if err != nil {
 				_, err = db.Ins.Exec("insert into s_usage (port, `date`, downUsage, upUsage) VALUES (?,date(?),?,?)", p, time.Now(), u.DownUsage, u.UpUsage)
