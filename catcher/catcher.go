@@ -195,7 +195,7 @@ func (c *Catcher) saveTodayUsage() {
 		todayUsage := c.GetTodayUsage()
 
 		for p, u := range todayUsage {
-			row := db.Ins.QueryRow("select port, `date`, downUsage, upUsage from s_usage")
+			row := db.Ins.QueryRow("select port, `date`, downUsage, upUsage from s_usage where port = ?", p)
 			u2 := DateUsage{}
 			err := row.Scan(&u2.Port, &u2.Time, &u2.DownUsage, &u2.UpUsage)
 			if err != nil {
