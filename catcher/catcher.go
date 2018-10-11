@@ -103,25 +103,17 @@ func (c Catcher) GetTodayUsage() map[int]*DateUsage {
 }
 
 func (c Catcher) GetMonthUsage() map[int]*Usage {
-	rows, err := db.Ins.Query("select port, sum(downUsage), sum(upUsage) from s_usage " +
-		"where date(`date`) between date('now','start of month') and date('now', '-1 day') " +
-		"group by port")
+	rows, err := db.Ins.Query("select port, sum(downUsage), sum(upUsage) from s_usage group by port")
 	if err != nil {
 		panic(err)
 	}
 	defer rows.Close()
 
-	todayUsage, ok := c.DatePortUsage[date.Today()]
-
 	m := make(map[int]*Usage)
-	p := 0
-	u := Usage{}
 	for rows.Next() {
+		p := 0
+		u := Usage{}
 		rows.Scan(&p, &u.DownUsage, &u.UpUsage)
-		if ok {
-			u.DownUsage += todayUsage.GetOrDefault(p).DownUsage
-			u.UpUsage += todayUsage.GetOrDefault(p).UpUsage
-		}
 		m[p] = &u
 	}
 	return m
