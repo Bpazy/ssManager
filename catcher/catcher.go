@@ -29,8 +29,18 @@ func (u DateUsage) GetDate() date.Date {
 	return date.NewAt(u.Time)
 }
 
+type PortDateUsageMap map[int]*DateUsage
+
+func (p PortDateUsageMap) GetOrDefault(port int) *DateUsage {
+	usage, exists := p[port]
+	if exists {
+		return usage
+	}
+	return &DateUsage{Time: time.Now()}
+}
+
 type Catcher struct {
-	DatePortUsage map[date.Date]map[int]*DateUsage
+	DatePortUsage map[date.Date]PortDateUsageMap
 	Ports         *arraylist.List
 
 	perUnitTimePortDownSize map[int]int
@@ -41,7 +51,7 @@ type Catcher struct {
 
 func New(deviceName string, ports []int) *Catcher {
 	c := Catcher{}
-	c.DatePortUsage = make(map[date.Date]map[int]*DateUsage)
+	c.DatePortUsage = make(map[date.Date]PortDateUsageMap)
 	c.Ports = arraylist.New()
 	c.perUnitTimePortDownSize = make(map[int]int)
 	c.perUnitTimePortUpSize = make(map[int]int)
@@ -57,7 +67,7 @@ func New(deviceName string, ports []int) *Catcher {
 	return &c
 }
 
-func readTodayUsageFromDb() map[date.Date]map[int]*DateUsage {
+func readTodayUsageFromDb() map[date.Date]PortDateUsageMap {
 	rows, err := db.Ins.Query("select port, `date`, downUsage, upUsage from s_usage where date(`date`) = date('now')")
 	if err != nil {
 		panic(err)
@@ -77,7 +87,7 @@ func readTodayUsageFromDb() map[date.Date]map[int]*DateUsage {
 		m[u.Port] = u
 	}
 
-	r := make(map[date.Date]map[int]*DateUsage)
+	r := make(map[date.Date]PortDateUsageMap)
 	r[date.Today()] = m
 	return r
 }
@@ -109,8 +119,8 @@ func (c Catcher) GetMonthUsage() map[int]*Usage {
 	for rows.Next() {
 		rows.Scan(&p, &u.DownUsage, &u.UpUsage)
 		if ok {
-			u.DownUsage += todayUsage[p].DownUsage
-			u.UpUsage += todayUsage[p].UpUsage
+			u.DownUsage += todayUsage.GetOrDefault(p).DownUsage
+			u.UpUsage += todayUsage.GetOrDefault(p).UpUsage
 		}
 		m[p] = &u
 	}
@@ -195,7 +205,7 @@ func (c *Catcher) saveTodayUsage() {
 		todayUsage := c.GetTodayUsage()
 
 		for p, u := range todayUsage {
-			row := db.Ins.QueryRow("select port, `date`, downUsage, upUsage from s_usage where port = ?", p)
+			row := db.Ins.QueryRow("select port, `date`, downUsage, upUsage from s_usage where port = ? and `date` = date('now')", p)
 			u2 := DateUsage{}
 			err := row.Scan(&u2.Port, &u2.Time, &u2.DownUsage, &u2.UpUsage)
 			if err != nil {
