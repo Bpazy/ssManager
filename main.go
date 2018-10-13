@@ -91,6 +91,11 @@ type Speed struct {
 }
 
 func writeSpeed(c *catcher.Catcher) {
+	defer func() {
+		if err := recover(); err != nil {
+			log.Error(err)
+		}
+	}()
 	for {
 		m := make(map[int]Speed)
 		for _, p := range c.Ports.Values() {
@@ -123,6 +128,11 @@ func tokenHandler() gin.HandlerFunc {
 }
 
 func writeUsage(c *catcher.Catcher) {
+	defer func() {
+		if err := recover(); err != nil {
+			log.Error(err)
+		}
+	}()
 	for {
 		portStructs := getTotalUsage(c)
 		for _, e := range wsList.Values() {
@@ -152,6 +162,11 @@ func getTotalUsage(c *catcher.Catcher) []PortStruct {
 }
 
 func tokenMonitor() {
+	defer func() {
+		if err := recover(); err != nil {
+			log.Error(err)
+		}
+	}()
 	for {
 		for _, wsToken := range wsTokenSet.Values() {
 			token := wsToken.(WsToken)
@@ -164,6 +179,11 @@ func tokenMonitor() {
 }
 
 func wsConnMonitor() {
+	defer func() {
+		if err := recover(); err != nil {
+			log.Error(err)
+		}
+	}()
 	for {
 		for i, e := range wsList.Values() {
 			c := e.(*ws.Client)
