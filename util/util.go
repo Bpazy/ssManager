@@ -10,12 +10,6 @@ import (
 	"strings"
 )
 
-func ShouldPanic(err error) {
-	if err != nil {
-		panic(err)
-	}
-}
-
 func ShouldParseInt64(i string) (int64, bool) {
 	atoi, err := strconv.ParseInt(i, 10, 64)
 	if err != nil {
@@ -50,7 +44,9 @@ func BindJson(c *gin.Context, target interface{}) bool {
 
 func MustRunCommand(c string) string {
 	result, err := RunCommand(c)
-	ShouldPanic(err)
+	if err != nil {
+		panic(err)
+	}
 	return result
 }
 

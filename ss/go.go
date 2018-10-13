@@ -2,7 +2,6 @@ package ss
 
 import (
 	"encoding/json"
-	"github.com/Bpazy/ssManager/util"
 	"github.com/sirupsen/logrus"
 	"io/ioutil"
 )
@@ -23,7 +22,9 @@ type GoConfig struct {
 
 func (c GoClient) QueryPortPasswords() map[string]string {
 	config, err := loadConfig(c.Filename)
-	util.ShouldPanic(err)
+	if err != nil {
+		panic(err)
+	}
 
 	portPasswords := config.PortPassword
 	for k := range portPasswords {
@@ -34,14 +35,19 @@ func (c GoClient) QueryPortPasswords() map[string]string {
 
 func (c GoClient) AddPortPassword(port, password string) {
 	config, err := loadConfig(c.Filename)
-	util.ShouldPanic(err)
+	if err != nil {
+		panic(err)
+	}
+
 	config.PortPassword[port] = password
 	writeConfig(c.Filename, config)
 }
 
 func (c GoClient) DeletePort(port string) error {
 	config, err := loadConfig(c.Filename)
-	util.ShouldPanic(err)
+	if err != nil {
+		panic(err)
+	}
 
 	delete(config.PortPassword, port)
 	writeConfig(c.Filename, config)
@@ -68,8 +74,12 @@ func loadConfig(filename string) (c *GoConfig, err error) {
 
 func writeConfig(filename string, c *GoConfig) {
 	configBytes, err := json.MarshalIndent(c, "", "  ")
-	util.ShouldPanic(err)
+	if err != nil {
+		panic(err)
+	}
 
 	err = ioutil.WriteFile(filename, configBytes, 0644)
-	util.ShouldPanic(err)
+	if err != nil {
+		panic(err)
+	}
 }
