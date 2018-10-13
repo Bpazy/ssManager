@@ -1,12 +1,11 @@
 package main
 
 import (
-	"database/sql"
 	"flag"
+	"github.com/Bpazy/ssManager/catcher"
 	"github.com/Bpazy/ssManager/cookie"
 	"github.com/Bpazy/ssManager/id"
 	"github.com/Bpazy/ssManager/iptables"
-	"github.com/Bpazy/ssManager/net"
 	"github.com/Bpazy/ssManager/result"
 	"github.com/Bpazy/ssManager/ss"
 	"github.com/Bpazy/ssManager/util"
@@ -15,7 +14,6 @@ import (
 	"github.com/emirpasic/gods/sets/hashset"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
-	_ "github.com/mattn/go-sqlite3"
 	log "github.com/sirupsen/logrus"
 	"net/http"
 	"sort"
@@ -29,14 +27,12 @@ const (
 )
 
 var (
-	db        *sql.DB
 	sc        ss.Client
 	wsTimeout int64 = 60
 
 	wsList     = arraylist.New()
 	wsTokenSet = hashset.New()
 
-	dbPath         = flag.String("dbPath", "temp.db", "sqlite数据库文件路径")
 	port           = flag.String("port", ":8082", "server port")
 	version        = flag.String("type", "go", "shadowsocks type. such python or go")
 	configFilename = flag.String("filename", "config.json", "shadowsocks config file name")
@@ -49,30 +45,28 @@ type WsToken struct {
 }
 
 func main() {
-	go monitor()
+	c := catcher.New(*deviceName, QueryPorts())
+	go writeUsage(c) // WebSocket write usage
+	go writeSpeed(c) // WebSocket write speed
+
+	runServer(c)
+}
+
+func runServer(c *catcher.Catcher) {
 	go wsConnMonitor()
 	go tokenMonitor()
 
-	net.AddPorts(QueryPorts())
-	handle := net.DetectNet(*deviceName)
-	defer handle.Close()
-
-	go writeSpeed()
-
 	r := gin.Default()
 	r.Use(errorMiddleware(), authMiddleware())
-
 	wsApi := r.Group("/ws")
 	{
-		wsApi.GET("/echo", echoHandler())
+		wsApi.GET("/echo", echoHandler(c))
 	}
-
 	api := r.Group("/api")
 	{
 		api.POST("/login", loginHandler())
 		api.GET("/token", tokenHandler())
 	}
-
 	usageApi := api.Group("/usage")
 	{
 		usageApi.POST("/save", saveHandler())
@@ -80,7 +74,6 @@ func main() {
 		usageApi.GET("/delete/:port", deleteHandler())
 		usageApi.GET("/reset/:port", resetHandler())
 	}
-
 	ssApi := api.Group("/ss")
 	{
 		ssApi.POST("/addPortPassword", addPortPasswordHandler())
@@ -97,12 +90,18 @@ type Speed struct {
 	UpSpeed   float32 `json:"upSpeed"`
 }
 
-func writeSpeed() {
+func writeSpeed(c *catcher.Catcher) {
+	defer func() {
+		if err := recover(); err != nil {
+			log.Error(err)
+		}
+	}()
 	for {
 		m := make(map[int]Speed)
-		for _, p := range QueryPorts() {
-			downSpeed, upSpeed := net.GetSpeed(p)
-			m[p] = Speed{
+		for _, p := range c.Ports.Values() {
+			i := p.(int)
+			downSpeed, upSpeed := c.GetSpeed(i)
+			m[i] = Speed{
 				DownSpeed: downSpeed,
 				UpSpeed:   upSpeed,
 			}
@@ -128,10 +127,14 @@ func tokenHandler() gin.HandlerFunc {
 	}
 }
 
-func monitor() {
+func writeUsage(c *catcher.Catcher) {
+	defer func() {
+		if err := recover(); err != nil {
+			log.Error(err)
+		}
+	}()
 	for {
-		// TODO performance optimize
-		portStructs := QueryPortStructsWithUsage()
+		portStructs := getTotalUsage(c)
 		for _, e := range wsList.Values() {
 			c := e.(*ws.Client)
 
@@ -146,7 +149,24 @@ func monitor() {
 	}
 }
 
+func getTotalUsage(c *catcher.Catcher) []PortStruct {
+	portStructs := QueryPortStructs()
+	monthUsage := c.GetMonthUsage()
+	for i, p := range portStructs {
+		if monthUsage[p.Port] != nil {
+			portStructs[i].DownstreamUsage = monthUsage[p.Port].DownUsage
+			portStructs[i].UpstreamUsage = monthUsage[p.Port].UpUsage
+		}
+	}
+	return portStructs
+}
+
 func tokenMonitor() {
+	defer func() {
+		if err := recover(); err != nil {
+			log.Error(err)
+		}
+	}()
 	for {
 		for _, wsToken := range wsTokenSet.Values() {
 			token := wsToken.(WsToken)
@@ -159,6 +179,11 @@ func tokenMonitor() {
 }
 
 func wsConnMonitor() {
+	defer func() {
+		if err := recover(); err != nil {
+			log.Error(err)
+		}
+	}()
 	for {
 		for i, e := range wsList.Values() {
 			c := e.(*ws.Client)
@@ -173,7 +198,7 @@ func wsConnMonitor() {
 	}
 }
 
-func echoHandler() gin.HandlerFunc {
+func echoHandler(ca *catcher.Catcher) gin.HandlerFunc {
 	upgrader := websocket.Upgrader{}
 	upgrader.CheckOrigin = func(r *http.Request) bool {
 		return true
@@ -195,10 +220,9 @@ func echoHandler() gin.HandlerFunc {
 		if err != nil {
 			panic(err)
 		}
-		portStructs := QueryPortStructsWithUsage()
-		sort.Sort(sort.Reverse(PortStructSorter(portStructs)))
 
-		conn.WriteJSON(portStructs)
+		conn.WriteJSON(getTotalUsage(ca))
+
 		client := ws.Client{Conn: conn}
 		wsList.Add(&client)
 

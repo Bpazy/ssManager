@@ -1,8 +1,8 @@
 package main
 
 import (
+	"github.com/Bpazy/ssManager/db"
 	"github.com/Bpazy/ssManager/iptables"
-	"github.com/Bpazy/ssManager/util"
 )
 
 type PortStructSorter []PortStruct
@@ -22,8 +22,8 @@ func (p PortStructSorter) Swap(i, j int) {
 type PortStruct struct {
 	Port            int    `json:"port"`
 	Alias           string `json:"alias"`
-	UpstreamUsage   int64  `json:"upstreamUsage"`
-	DownstreamUsage int64  `json:"downstreamUsage"`
+	UpstreamUsage   int    `json:"upstreamUsage"`
+	DownstreamUsage int    `json:"downstreamUsage"`
 }
 
 func QueryPorts() []int {
@@ -37,8 +37,10 @@ func QueryPorts() []int {
 }
 
 func QueryPortStructs() []PortStruct {
-	rows, err := db.Query("select port, alias from s_ports order by port")
-	util.ShouldPanic(err)
+	rows, err := db.Ins.Query("select port, alias from s_ports order by port")
+	if err != nil {
+		panic(err)
+	}
 	defer rows.Close()
 
 	ports := make([]PortStruct, 0)
@@ -51,29 +53,17 @@ func QueryPortStructs() []PortStruct {
 	return ports
 }
 
-func QueryPortStructsWithUsage() []PortStruct {
-	ports := QueryPortStructs()
-
-	for i := range ports {
-		p := &ports[i]
-		if p.Alias == "" {
-			p.Alias = "未配置"
-		}
-		p.UpstreamUsage = iptables.GetDptUsage(p.Port)
-		p.DownstreamUsage = iptables.GetSptUsage(p.Port)
-	}
-	return ports
-}
-
 func DeletePort(port int) {
 	iptables.DeleteIptables(port)
 
-	_, err := db.Exec("delete from s_ports where port = ?", port)
-	util.ShouldPanic(err)
+	_, err := db.Ins.Exec("delete from s_ports where port = ?", port)
+	if err != nil {
+		panic(err)
+	}
 }
 
 func SavePort(p *PortStruct) bool {
-	_, err := db.Exec("insert into s_ports (port, alias) values (?, ?)", p.Port, p.Alias)
+	_, err := db.Ins.Exec("insert into s_ports (port, alias) values (?, ?)", p.Port, p.Alias)
 	if err != nil {
 		return false
 	}
@@ -81,7 +71,7 @@ func SavePort(p *PortStruct) bool {
 }
 
 func EditPort(p *PortStruct) bool {
-	_, err := db.Exec("update s_ports set alias = ? where port = ?", p.Alias, p.Port)
+	_, err := db.Ins.Exec("update s_ports set alias = ? where port = ?", p.Alias, p.Port)
 	if err != nil {
 		return false
 	}
@@ -101,26 +91,26 @@ type User struct {
 }
 
 func SaveUser(u *User, password string) {
-	_, err := db.Exec("insert into s_user (user_id, username, nickname, email_address) values (?, ?, ?, ?)",
+	_, err := db.Ins.Exec("insert into s_user (user_id, username, nickname, email_address) values (?, ?, ?, ?)",
 		u.UserId, u.Username, u.Nickname, u.EmailAddress)
 	if err != nil {
 		panic(err)
 	}
-	_, err = db.Exec("insert into s_user_password (user_id, password) values (?, ?)", u.UserId, password)
+	_, err = db.Ins.Exec("insert into s_user_password (user_id, password) values (?, ?)", u.UserId, password)
 	if err != nil {
 		panic(err)
 	}
 }
 
 func FindUser(userId string) *User {
-	row := db.QueryRow("select user_id, username, nickname, email_address from s_user where userId = ?", userId)
+	row := db.Ins.QueryRow("select user_id, username, nickname, email_address from s_user where userId = ?", userId)
 	u := User{}
 	row.Scan(&u.UserId, &u.Username, &u.Nickname, &u.EmailAddress)
 	return &u
 }
 
 func FindUserByAuth(username, password string) *User {
-	row := db.QueryRow("select A.user_id, A.username, A.nickname, A.email_address from s_user A "+
+	row := db.Ins.QueryRow("select A.user_id, A.username, A.nickname, A.email_address from s_user A "+
 		"join s_user_password B on A.user_id = B.user_id where A.username = ? and B.password = ?", username, password)
 	u := User{}
 	err := row.Scan(&u.UserId, &u.Username, &u.Nickname, &u.EmailAddress)

@@ -1,10 +1,9 @@
 package main
 
 import (
-	"database/sql"
 	"flag"
+	"github.com/Bpazy/ssManager/db"
 	"github.com/Bpazy/ssManager/ss"
-	"github.com/Bpazy/ssManager/util"
 	"github.com/sirupsen/logrus"
 	"os"
 	"strings"
@@ -12,12 +11,9 @@ import (
 
 func init() {
 	flag.Parse()
+
 	logrus.SetOutput(os.Stdout)
 	logrus.SetLevel(logrus.DebugLevel)
-
-	db2, err := sql.Open("sqlite3", *dbPath)
-	util.ShouldPanic(err)
-	db = db2
 
 	sc = createSsClient(*version)
 
@@ -28,6 +24,9 @@ func init() {
 		createTable("s_user")
 		createTable("s_user_password")
 		SaveUser(createAdminUser())
+	}
+	if !tableExists("s_usage") {
+		createTable("s_usage")
 	}
 }
 
@@ -44,15 +43,19 @@ func createAdminUser() (*User, string) {
 }
 
 func createTable(tableName string) {
-	_, err := db.Exec(getSql(strings.Replace(tableInitPath, "{}", tableName, -1)))
-	util.ShouldPanic(err)
+	_, err := db.Ins.Exec(getSql(strings.Replace(tableInitPath, "{}", tableName, -1)))
+	if err != nil {
+		panic(err)
+	}
 }
 
 func tableExists(tableName string) bool {
-	row := db.QueryRow("select count(*) from sqlite_master where name = ?;", tableName)
+	row := db.Ins.QueryRow("select count(*) from sqlite_master where name = ?;", tableName)
 	count := 0
 	err := row.Scan(&count)
-	util.ShouldPanic(err)
+	if err != nil {
+		panic(err)
+	}
 
 	if count != 0 {
 		return true
@@ -62,6 +65,8 @@ func tableExists(tableName string) bool {
 
 func getSql(filePath string) string {
 	b, err := Asset(filePath)
-	util.ShouldPanic(err)
+	if err != nil {
+		panic(err)
+	}
 	return string(b)
 }
