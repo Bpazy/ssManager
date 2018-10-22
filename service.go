@@ -2,7 +2,6 @@ package main
 
 import (
 	"github.com/Bpazy/ssManager/db"
-	"github.com/Bpazy/ssManager/iptables"
 )
 
 type PortStructSorter []PortStruct
@@ -54,8 +53,6 @@ func QueryPortStructs() []PortStruct {
 }
 
 func DeletePort(port int) {
-	iptables.DeleteIptables(port)
-
 	_, err := db.Ins.Exec("delete from s_ports where port = ?", port)
 	if err != nil {
 		panic(err)
@@ -79,8 +76,7 @@ func EditPort(p *PortStruct) bool {
 }
 
 func ResetPortUsage(port int) {
-	iptables.DeleteIptables(port)
-	iptables.SaveIptables(port)
+	// TODO
 }
 
 type User struct {

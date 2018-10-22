@@ -5,7 +5,6 @@ import (
 	"github.com/Bpazy/ssManager/catcher"
 	"github.com/Bpazy/ssManager/cookie"
 	"github.com/Bpazy/ssManager/id"
-	"github.com/Bpazy/ssManager/iptables"
 	"github.com/Bpazy/ssManager/result"
 	"github.com/Bpazy/ssManager/ss"
 	"github.com/Bpazy/ssManager/util"
@@ -359,7 +358,6 @@ func saveHandler() gin.HandlerFunc {
 		if !ok {
 			c.JSON(http.StatusOK, result.Fail("save failed", &p))
 		}
-		iptables.SaveIptables(p.Port)
 		c.JSON(http.StatusOK, result.Ok("save success", &p))
 	}
 }
